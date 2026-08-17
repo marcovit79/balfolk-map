@@ -91,10 +91,48 @@ A microservice-based architecture prototype featuring a Vue 3 + Leaflet frontend
 ### One-Command Start
 Run the following from the root directory:
 ```bash
-docker-compose up --build
+podman-compose up -d
+# or: docker-compose up -d
 ```
 Once started, open your browser and navigate to:
 **`http://localhost:8080`**
+
+---
+
+## 🛠 Useful Commands
+
+### With `podman-compose`:
+* **Start all services in background:**
+  ```bash
+  podman-compose up -d
+  ```
+* **View status of running services:**
+  ```bash
+  podman-compose ps
+  ```
+* **View live logs from all services:**
+  ```bash
+  podman-compose logs -f
+  ```
+* **View logs from a specific service (`be_fa`, `be_cfg`, or `api_gateway`):**
+  ```bash
+  podman-compose logs -f be_fa
+  ```
+* **Rebuild container images and restart:**
+  ```bash
+  podman-compose up --build -d
+  ```
+* **Stop and tear down the stack:**
+  ```bash
+  podman-compose down
+  ```
+
+### With `docker-compose`:
+* **Start:** `docker-compose up -d`
+* **Status:** `docker-compose ps`
+* **Logs:** `docker-compose logs -f`
+* **Rebuild:** `docker-compose up --build -d`
+* **Stop:** `docker-compose down`
 
 ---
 
