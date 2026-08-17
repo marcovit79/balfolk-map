@@ -2,6 +2,7 @@ export interface EventPopup {
   lat: number;
   lng: number;
   content: string;
+  date?: string;
 }
 
 export interface AgendaTradResponse {

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
+import { onMounted, ref, computed, watch } from 'vue';
 import L from 'leaflet';
 import 'leaflet.markercluster';
 import DOMPurify from 'dompurify';
@@ -21,6 +21,11 @@ const mapContainer = ref<HTMLElement | null>(null);
 const events = ref<FestivalEvent[]>([]);
 const isLoading = ref<boolean>(false);
 const errorMessage = ref<string | null>(null);
+
+// Date Filtering State
+const startDate = ref<string>('');
+const endDate = ref<string>('');
+const activePreset = ref<string>('all');
 
 let map: L.Map | null = null;
 let clusterGroup: any = null;
@@ -66,7 +71,7 @@ const fetchEvents = async () => {
 
     const data: FestivalEvent[] = await response.json();
     events.value = data;
-    renderMarkers(data);
+    renderMarkers(filteredEvents.value);
   } catch (error: any) {
     console.error('Failed to load events:', error);
     errorMessage.value = `Error loading events: ${error.message || 'Unable to connect'}`;
@@ -74,6 +79,53 @@ const fetchEvents = async () => {
     isLoading.value = false;
   }
 };
+
+const setPreset = (preset: 'all' | 'weekend' | '7days' | '30days') => {
+  activePreset.value = preset;
+  const now = new Date();
+  const formatDate = (d: Date) => d.toISOString().split('T')[0];
+
+  if (preset === 'all') {
+    startDate.value = '';
+    endDate.value = '';
+  } else if (preset === '7days') {
+    startDate.value = formatDate(now);
+    const next7 = new Date(now);
+    next7.setDate(next7.getDate() + 7);
+    endDate.value = formatDate(next7);
+  } else if (preset === '30days') {
+    startDate.value = formatDate(now);
+    const next30 = new Date(now);
+    next30.setDate(next30.getDate() + 30);
+    endDate.value = formatDate(next30);
+  } else if (preset === 'weekend') {
+    const day = now.getDay();
+    const distToFriday = (5 - day + 7) % 7;
+    const friday = new Date(now);
+    friday.setDate(friday.getDate() + distToFriday);
+    const sunday = new Date(friday);
+    sunday.setDate(sunday.getDate() + 2);
+    startDate.value = formatDate(friday);
+    endDate.value = formatDate(sunday);
+  }
+};
+
+const onCustomDateChange = () => {
+  activePreset.value = 'custom';
+};
+
+const clearFilter = () => {
+  setPreset('all');
+};
+
+const filteredEvents = computed(() => {
+  return events.value.filter((event) => {
+    if (!event.date) return true;
+    if (startDate.value && event.date < startDate.value) return false;
+    if (endDate.value && event.date > endDate.value) return false;
+    return true;
+  });
+});
 
 const renderMarkers = (eventList: FestivalEvent[]) => {
   if (!map) return;
@@ -110,6 +162,10 @@ const renderMarkers = (eventList: FestivalEvent[]) => {
   }
 };
 
+watch(filteredEvents, (newList) => {
+  renderMarkers(newList);
+});
+
 onMounted(() => {
   initMap();
   fetchEvents();
@@ -118,19 +174,80 @@ onMounted(() => {
 
 <template>
   <div class="festival-map-wrapper">
-    <!-- Floating HUD Header -->
+    <!-- Floating HUD Control & Filter Panel -->
     <header class="map-overlay-header">
-      <div class="map-title">
-        <span>🎪</span>
-        <span>Festival Aggregator</span>
+      <!-- Top Row: Title, Counter & Actions -->
+      <div class="header-main-row">
+        <div class="map-title">
+          <span>🎪</span>
+          <span>Festival Aggregator</span>
+        </div>
+        <div class="event-count-badge" v-if="!isLoading">
+          {{ filteredEvents.length }} <span v-if="filteredEvents.length !== events.length">of {{ events.length }}</span> events
+        </div>
+        <button class="refresh-btn" @click="fetchEvents" :disabled="isLoading">
+          <span v-if="isLoading">⏳</span>
+          <span v-else>🔄 Refresh</span>
+        </button>
       </div>
-      <div class="event-count-badge" v-if="!isLoading">
-        {{ events.length }} events
+
+      <!-- Filter Row: Date Presets & Pickers -->
+      <div class="header-filter-row">
+        <div class="filter-presets">
+          <button 
+            class="preset-pill" 
+            :class="{ active: activePreset === 'all' }" 
+            @click="setPreset('all')">
+            All Dates
+          </button>
+          <button 
+            class="preset-pill" 
+            :class="{ active: activePreset === 'weekend' }" 
+            @click="setPreset('weekend')">
+            This Weekend
+          </button>
+          <button 
+            class="preset-pill" 
+            :class="{ active: activePreset === '7days' }" 
+            @click="setPreset('7days')">
+            Next 7 Days
+          </button>
+          <button 
+            class="preset-pill" 
+            :class="{ active: activePreset === '30days' }" 
+            @click="setPreset('30days')">
+            Next 30 Days
+          </button>
+        </div>
+
+        <div class="custom-date-inputs">
+          <div class="date-input-group">
+            <label for="start-date">From:</label>
+            <input 
+              id="start-date"
+              type="date" 
+              v-model="startDate" 
+              @change="onCustomDateChange" 
+            />
+          </div>
+          <div class="date-input-group">
+            <label for="end-date">To:</label>
+            <input 
+              id="end-date"
+              type="date" 
+              v-model="endDate" 
+              @change="onCustomDateChange" 
+            />
+          </div>
+          <button 
+            v-if="startDate || endDate" 
+            class="clear-filter-btn" 
+            @click="clearFilter"
+            title="Clear date filter">
+            ✕ Clear
+          </button>
+        </div>
       </div>
-      <button class="refresh-btn" @click="fetchEvents" :disabled="isLoading">
-        <span v-if="isLoading">⏳ Loading...</span>
-        <span v-else>🔄 Refresh</span>
-      </button>
     </header>
 
     <!-- Map Fullscreen Container -->

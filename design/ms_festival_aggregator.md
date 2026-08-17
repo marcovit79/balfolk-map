@@ -39,9 +39,10 @@ The external source requires session management and multipart form submission. T
 The raw response returns `{ count: number, boundaries: object, popups: [{ lat, lng, content }] }`.
 
 The service processes the raw `content` HTML strings before returning them:
-1. **Hyperlink Rewriting:** Relative links (`href="/..."`) are converted to absolute URLs (`href="https://agendatrad.org/..."`) with `target="_blank" rel="noopener noreferrer"`.
-2. **Image Source Rewriting:** Relative image poster paths (`src="/..."`) are converted to absolute URLs (`src="https://agendatrad.org/..."`).
-3. **Type Coercion:** Ensures `lat` and `lng` are parsed as floating-point numbers.
+1. **Date Extraction & Normalization:** Extracts the event date from the leading `<h4>` header tag (supporting French and Italian textual and numeric formats, e.g. `vendredi 28 août 2026`, `martedì 1 settembre 2026`, `28/08/2026`) and converts it to standard ISO `YYYY-MM-DD` format (e.g. `2026-08-28`) in a top-level `date` property.
+2. **Hyperlink Rewriting:** Relative links (`href="/..."`) are converted to absolute URLs (`href="https://agendatrad.org/..."`) with `target="_blank" rel="noopener noreferrer"`.
+3. **Image Source Rewriting:** Relative image poster paths (`src="/..."`) are converted to absolute URLs (`src="https://agendatrad.org/..."`).
+4. **Type Coercion:** Ensures `lat` and `lng` are parsed as floating-point numbers.
 
 ---
 
@@ -65,6 +66,7 @@ The service processes the raw `content` HTML strings before returning them:
     {
       "lat": 45.5422,
       "lng": 11.7861,
+      "date": "2026-09-01",
       "content": "<h4>mardi 01 sept. 2026</h4><h5><a href=\"https://agendatrad.org/e_2026-09/...\" target=\"_blank\">Festa a ballo...</a></h5>..."
     }
   ]

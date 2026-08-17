@@ -109,8 +109,15 @@ export class EventsService implements OnModuleInit {
     }
 
     return response.data.popups.map(item => {
+      const rawContent = item.content || '';
+
+      // Extract date text from the starting <h4> tag if present and convert to ISO YYYY-MM-DD
+      const dateMatch = rawContent.match(/<h4[^>]*>([\s\S]*?)<\/h4>/i);
+      const rawDate = dateMatch ? dateMatch[1].replace(/<[^>]*>/g, '').trim() : undefined;
+      const isoDate = this.parseDateToIso(rawDate);
+
       // Fix relative links & images
-      let sanitizedContent = item.content || '';
+      let sanitizedContent = rawContent;
       sanitizedContent = sanitizedContent.replace(/href="\/([^"]+)"/g, 'href="https://agendatrad.org/$1" target="_blank" rel="noopener noreferrer"');
       sanitizedContent = sanitizedContent.replace(/src="\/([^"]+)"/g, 'src="https://agendatrad.org/$1"');
 
@@ -118,8 +125,74 @@ export class EventsService implements OnModuleInit {
         lat: typeof item.lat === 'string' ? parseFloat(item.lat) : item.lat,
         lng: typeof item.lng === 'string' ? parseFloat(item.lng) : item.lng,
         content: sanitizedContent,
+        ...(isoDate ? { date: isoDate } : {}),
       };
     });
+  }
+
+  private static readonly MONTH_MAP: Record<string, string> = {
+    'janvier': '01', 'janv': '01', 'jan': '01', 'gennaio': '01', 'gen': '01',
+    'fevrier': '02', 'fevr': '02', 'fev': '02', 'febbraio': '02', 'feb': '02',
+    'mars': '03', 'marzo': '03', 'mar': '03',
+    'avril': '04', 'avr': '04', 'aprile': '04', 'apr': '04',
+    'mai': '05', 'maggio': '05', 'mag': '05',
+    'juin': '06', 'giugno': '06', 'giu': '06',
+    'juillet': '07', 'juil': '07', 'jul': '07', 'luglio': '07', 'lug': '07',
+    'aout': '08', 'aou': '08', 'agosto': '08', 'ago': '08',
+    'septembre': '09', 'sept': '09', 'sep': '09', 'settembre': '09', 'sett': '09', 'set': '09',
+    'octobre': '10', 'oct': '10', 'ottobre': '10', 'ott': '10',
+    'novembre': '11', 'nov': '11',
+    'decembre': '12', 'dec': '12', 'dicembre': '12', 'dic': '12',
+  };
+
+  private normalizeText(str: string): string {
+    return str
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase();
+  }
+
+  private parseDateToIso(rawDate?: string): string | undefined {
+    if (!rawDate) return undefined;
+
+    const cleaned = rawDate.trim().replace(/\./g, '');
+
+    // 1. Direct match YYYY-MM-DD
+    if (/^\d{4}-\d{2}-\d{2}$/.test(cleaned)) {
+      return cleaned;
+    }
+
+    // 2. Direct match DD/MM/YYYY
+    const slashMatch = cleaned.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (slashMatch) {
+      const [, d, m, y] = slashMatch;
+      return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+    }
+
+    // 3. Textual date parsing (French / Italian) e.g. "vendredi 28 août 2026", "martedì 1 settembre 2026"
+    const tokens = cleaned.split(/\s+/);
+    let year: string | undefined;
+    let month: string | undefined;
+    let day: string | undefined;
+
+    for (const token of tokens) {
+      if (/^\d{4}$/.test(token)) {
+        year = token;
+      } else if (/^\d{1,2}$/.test(token) && !day) {
+        day = token.padStart(2, '0');
+      } else {
+        const normalizedToken = this.normalizeText(token);
+        if (EventsService.MONTH_MAP[normalizedToken]) {
+          month = EventsService.MONTH_MAP[normalizedToken];
+        }
+      }
+    }
+
+    if (year && month && day) {
+      return `${year}-${month}-${day}`;
+    }
+
+    return rawDate;
   }
 
   private getFallbackEvents(): EventPopup[] {
@@ -127,22 +200,26 @@ export class EventsService implements OnModuleInit {
       {
         lat: 45.5422,
         lng: 11.7861,
-        content: '<h4>Festa a ballo con gli Ancistrus</h4><p>Padova, Italy</p><p>Traditional folk dance & live concert.</p>',
+        date: '2026-09-01',
+        content: '<h4>Mardi 01 sept. 2026</h4><p>Padova, Italy</p><p>Traditional folk dance & live concert.</p>',
       },
       {
         lat: 45.4602,
         lng: 11.7449,
-        content: '<h4>Ekotonic concerto a ballo</h4><p>Veneto, Italy</p><p>Live folk orchestra performance.</p>',
+        date: '2026-08-28',
+        content: '<h4>Vendredi 28 août 2026</h4><p>Veneto, Italy</p><p>Live folk orchestra performance.</p>',
       },
       {
         lat: 43.6047,
         lng: 1.4442,
-        content: '<h4>Festival Trad en Gascogne</h4><p>Toulouse, France</p><p>Workshops, bals folk, concerts.</p>',
+        date: '2026-09-12',
+        content: '<h4>Samedi 12 sept. 2026</h4><p>Toulouse, France</p><p>Workshops, bals folk, concerts.</p>',
       },
       {
         lat: 48.8566,
         lng: 2.3522,
-        content: '<h4>Grand Bal Folk de Paris</h4><p>Paris, France</p><p>Live neo-trad band sets.</p>',
+        date: '2026-09-20',
+        content: '<h4>Dimanche 20 sept. 2026</h4><p>Paris, France</p><p>Live neo-trad band sets.</p>',
       },
     ];
   }
