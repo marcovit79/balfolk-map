@@ -1,6 +1,6 @@
 # Festival Aggregator Microservice (`ms_festival_aggregator`)
 
-This document specifies the Festival Aggregator backend microservice, including external data scraping, session handling, response transformation, and caching strategy.
+This document specifies the Festival Aggregator backend microservice, including multi-source event scraping, session handling, response transformation, and caching strategy.
 
 ---
 
@@ -8,41 +8,33 @@ This document specifies the Festival Aggregator backend microservice, including 
 * **Framework:** NestJS (TypeScript, Node.js 20 LTS)
 * **Internal Port:** `3000`
 * **Container Name:** `be_fa`
-* **Purpose:** Aggregates traditional dance, festival, and concert events from external sources (`agendatrad.org`), caches them, cleans and transforms the HTML content, and exposes them to the API Gateway.
+* **Purpose:** Concurrently aggregates events from multiple external providers ([AgendaTrad](https://agendatrad.org) for traditional dance festivals and [TrovaSagre](https://trovasagre.com) for Italian food and cultural sagre), normalizes their dates and HTML popups into a unified schema, caches them, and exposes them to the API Gateway.
 
 ---
 
-## 2. External Integration Protocol (`agendatrad.org`)
+## 2. External Integration Providers
 
-The external source requires session management and multipart form submission. The service performs a two-step integration:
+The aggregator concurrently queries two upstream sources in parallel using `Promise.allSettled`:
 
-### 2.1 Step 1: Session Cookie Acquisition
-* Performs an HTTP `GET` request to `https://agendatrad.org/calendar/map` with a desktop `User-Agent`.
-* Extracts and maintains the returned `Set-Cookie` header (`session=...`, etc.) for subsequent calls.
+### 2.1 Provider A: AgendaTrad (`agendatrad.org`)
+* **Step 1 (Session Cookie Acquisition):** Issues an HTTP `GET` request to `https://agendatrad.org/calendar/map` with a desktop `User-Agent` to obtain session cookies.
+* **Step 2 (Dynamic Search Query):** Computes dynamic query dates from `today` and bounds (`-10.0, 34.0, 35.0, 60.0`), sending a `POST` request with multipart/form-data payload to `https://agendatrad.org/calendar/map.json`.
+* **URL Rewriting:** Converts relative links (`href="/..."`) and images (`src="/..."`) to `https://agendatrad.org/...`.
 
-### 2.2 Step 2: Dynamic Event Query
-* Computes dynamic dates based on the current date:
-  * `data[Event][date_startInput]`: Current date in `DD/MM/YYYY` format.
-  * `data[Event][date_start]`: Current date in `YYYY-MM-DD` format.
-* Constructs a `multipart/form-data` payload containing:
-  * `_method`: `POST`
-  * `data[Event][bounds]`: `-10.0, 34.0, 35.0, 60.0` (covering Western & Central Europe)
-  * `data[Event][zoom]`: `5`
-  * `data[Check][types]`: `1`
-  * `data[EventType][EventType][]`: Selected event categories `[1, 2, 3, 4, 5, 6, 8, 9, 11, 12]`
-* Sends an HTTP `POST` request to `https://agendatrad.org/calendar/map.json` including the session cookie, `X-Requested-With: XMLHttpRequest`, `Origin`, and `Referer` headers.
+### 2.2 Provider B: TrovaSagre (`trovasagre.com`)
+* **REST API Query:** Issues an HTTP `GET` request to `https://trovasagre.com/api/events?limit=250&page=1`.
+* **Payload Parsing:** Extracts event titles, locations, dates (`date_start`, `date_end`), pre-geocoded `lat` and `lng` coordinates, descriptions, and flyer images (`https://trovasagre.com/uploads/...`).
+* **HTML Generation:** Synthesizes styled popup HTML matching the map application's look and feel with a direct link to the TrovaSagre event page (`https://trovasagre.com/evento/...`).
 
 ---
 
-## 3. Data Transformation & URL Rewriting
+## 3. Data Transformation & Normalization
 
-The raw response returns `{ count: number, boundaries: object, popups: [{ lat, lng, content }] }`.
-
-The service processes the raw `content` HTML strings before returning them:
-1. **Date Extraction & Normalization:** Extracts the event date from the leading `<h4>` header tag (supporting French and Italian textual and numeric formats, e.g. `vendredi 28 août 2026`, `martedì 1 settembre 2026`, `28/08/2026`) and converts it to standard ISO `YYYY-MM-DD` format (e.g. `2026-08-28`) in a top-level `date` property.
-2. **Hyperlink Rewriting:** Relative links (`href="/..."`) are converted to absolute URLs (`href="https://agendatrad.org/..."`) with `target="_blank" rel="noopener noreferrer"`.
-3. **Image Source Rewriting:** Relative image poster paths (`src="/..."`) are converted to absolute URLs (`src="https://agendatrad.org/..."`).
-4. **Type Coercion:** Ensures `lat` and `lng` are parsed as floating-point numbers.
+All events from both sources are mapped to a unified `EventPopup` interface:
+1. **Event Type Tagging (`evt_type`):** Tagged with `'balfolk'` for traditional dance & music festivals from AgendaTrad, and `'sagra'` for culinary & cultural festival events from TrovaSagre.
+2. **Date Normalization:** Dates are parsed and standardized into ISO `YYYY-MM-DD` format (supporting French and Italian textual and slash formats).
+3. **Type Coercion:** Ensures `lat` and `lng` are validated floating-point numbers.
+4. **Badge Tagging:** Popups include category badges indicating the event type and source provider.
 
 ---
 
@@ -50,24 +42,32 @@ The service processes the raw `content` HTML strings before returning them:
 
 * **Cache TTL:** In-memory cache with a 10-minute expiration time (`CACHE_TTL_MS = 600000`).
 * **Cache Warm-Up:** Triggered automatically upon service startup via the NestJS `OnModuleInit` lifecycle hook.
-* **Cache Invalidation:** On subsequent requests after TTL expiry, fresh data is fetched from the external source.
-* **Failure Resilience:** If the upstream source is unreachable, times out, or returns an error, the service gracefully falls back to existing cached events or fallback data, ensuring high availability.
+* **Cache Invalidation:** On subsequent requests after TTL expiry, fresh data is concurrently re-fetched.
+* **Failure Resilience:** If one upstream provider is temporarily down, the other provider's events are still served without interruption. If all upstream providers fail, existing cache or fallback data is returned.
 
 ---
 
 ## 5. API Specification
 
 ### `GET /events`
-* **Description:** Returns the list of all cached festival and concert map markers.
+* **Description:** Returns the list of all cached festival and sagra map markers.
 * **Response Status:** `200 OK`
 * **Response Body (JSON):**
   ```json
   [
     {
+      "lat": 43.5391,
+      "lng": 10.9540,
+      "date": "2026-08-18",
+      "evt_type": "sagra",
+      "content": "<h4 style=\"font-size: 16px;\">2026-08-18 – 2026-08-23</h4><h5><a href=\"https://trovasagre.com/evento/sagra-della-lepre-gambassi-terme-2026\" target=\"_blank\">Sagra della Lepre</a></h5>..."
+    },
+    {
       "lat": 45.5422,
       "lng": 11.7861,
       "date": "2026-09-01",
-      "content": "<h4>mardi 01 sept. 2026</h4><h5><a href=\"https://agendatrad.org/e_2026-09/...\" target=\"_blank\">Festa a ballo...</a></h5>..."
+      "evt_type": "balfolk",
+      "content": "<h4 style=\"font-size: 16px;\">mardi 01 sept. 2026</h4><h5><a href=\"https://agendatrad.org/e_2026-09/...\" target=\"_blank\">Festa a ballo...</a></h5>..."
     }
   ]
   ```

@@ -1,7 +1,11 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import axios from 'axios';
 import * as FormData from 'form-data';
-import { EventPopup, AgendaTradResponse } from './interfaces/event.interface';
+import {
+  EventPopup,
+  AgendaTradResponse,
+  TrovaSagreResponse,
+} from './interfaces/event.interface';
 
 @Injectable()
 export class EventsService implements OnModuleInit {
@@ -22,25 +26,56 @@ export class EventsService implements OnModuleInit {
   async getEvents(): Promise<EventPopup[]> {
     const now = Date.now();
     if (this.cachedEvents.length > 0 && now - this.lastFetchTime < this.CACHE_TTL_MS) {
-      this.logger.log(`Returning ${this.cachedEvents.length} cached events (age: ${Math.round((now - this.lastFetchTime) / 1000)}s)`);
+      this.logger.log(
+        `Returning ${this.cachedEvents.length} cached events (age: ${Math.round(
+          (now - this.lastFetchTime) / 1000,
+        )}s)`,
+      );
       return this.cachedEvents;
     }
 
     try {
-      this.logger.log('Cache expired or empty. Fetching fresh events from agendatrad.org...');
-      const freshEvents = await this.fetchFromAgendaTrad();
-      if (freshEvents.length > 0) {
-        this.cachedEvents = freshEvents;
+      this.logger.log('Cache expired or empty. Fetching fresh events from upstream sources...');
+
+      // Concurrently fetch from both AgendaTrad and TrovaSagre
+      const [agendaTradResult, trovaSagreResult] = await Promise.allSettled([
+        this.fetchFromAgendaTrad(),
+        this.fetchFromTrovaSagre(),
+      ]);
+
+      const combinedEvents: EventPopup[] = [];
+
+      if (agendaTradResult.status === 'fulfilled') {
+        this.logger.log(`Fetched ${agendaTradResult.value.length} events from AgendaTrad.`);
+        combinedEvents.push(...agendaTradResult.value);
+      } else {
+        this.logger.error(
+          `AgendaTrad fetch error: ${agendaTradResult.reason?.message || agendaTradResult.reason}`,
+        );
+      }
+
+      if (trovaSagreResult.status === 'fulfilled') {
+        this.logger.log(`Fetched ${trovaSagreResult.value.length} events from TrovaSagre.`);
+        combinedEvents.push(...trovaSagreResult.value);
+      } else {
+        this.logger.error(
+          `TrovaSagre fetch error: ${trovaSagreResult.reason?.message || trovaSagreResult.reason}`,
+        );
+      }
+
+      if (combinedEvents.length > 0) {
+        this.cachedEvents = combinedEvents;
         this.lastFetchTime = now;
-        this.logger.log(`Successfully fetched and cached ${freshEvents.length} events.`);
+        this.logger.log(
+          `Successfully merged and cached ${combinedEvents.length} total events.`,
+        );
       } else if (this.cachedEvents.length === 0) {
         this.cachedEvents = this.getFallbackEvents();
         this.lastFetchTime = now;
       }
     } catch (error) {
-      this.logger.error(`Error fetching events from agendatrad: ${error.message}`);
+      this.logger.error(`Unexpected aggregation error: ${error.message}`);
       if (this.cachedEvents.length === 0) {
-        this.logger.warn('No cached data available; loading fallback sample events.');
         this.cachedEvents = this.getFallbackEvents();
         this.lastFetchTime = now;
       }
@@ -50,7 +85,8 @@ export class EventsService implements OnModuleInit {
   }
 
   private async fetchFromAgendaTrad(): Promise<EventPopup[]> {
-    const userAgent = 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:130.0) Gecko/20100101 Firefox/130.0';
+    const userAgent =
+      'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:130.0) Gecko/20100101 Firefox/130.0';
 
     // Step 1: Request the map page to acquire session cookies
     const mapPageResponse = await axios.get('https://agendatrad.org/calendar/map', {
@@ -118,16 +154,93 @@ export class EventsService implements OnModuleInit {
 
       // Fix relative links & images
       let sanitizedContent = rawContent;
-      sanitizedContent = sanitizedContent.replace(/href="\/([^"]+)"/g, 'href="https://agendatrad.org/$1" target="_blank" rel="noopener noreferrer"');
-      sanitizedContent = sanitizedContent.replace(/src="\/([^"]+)"/g, 'src="https://agendatrad.org/$1"');
+      sanitizedContent = sanitizedContent.replace(
+        /href="\/([^"]+)"/g,
+        'href="https://agendatrad.org/$1" target="_blank" rel="noopener noreferrer"',
+      );
+      sanitizedContent = sanitizedContent.replace(
+        /src="\/([^"]+)"/g,
+        'src="https://agendatrad.org/$1"',
+      );
 
       return {
         lat: typeof item.lat === 'string' ? parseFloat(item.lat) : item.lat,
         lng: typeof item.lng === 'string' ? parseFloat(item.lng) : item.lng,
         content: sanitizedContent,
+        evt_type: 'balfolk',
         ...(isoDate ? { date: isoDate } : {}),
       };
     });
+  }
+
+  private async fetchFromTrovaSagre(): Promise<EventPopup[]> {
+    const userAgent =
+      'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:130.0) Gecko/20100101 Firefox/130.0';
+
+    const response = await axios.get<TrovaSagreResponse>(
+      'https://trovasagre.com/api/events?limit=250&page=1',
+      {
+        headers: {
+          'User-Agent': userAgent,
+          'Accept': 'application/json',
+        },
+        timeout: 10000,
+      },
+    );
+
+    if (!response.data || !Array.isArray(response.data.events)) {
+      return [];
+    }
+
+    const results: EventPopup[] = [];
+
+    for (const ev of response.data.events) {
+      if (ev.lat == null || ev.lng == null) continue;
+
+      const lat = typeof ev.lat === 'string' ? parseFloat(ev.lat) : ev.lat;
+      const lng = typeof ev.lng === 'string' ? parseFloat(ev.lng) : ev.lng;
+      if (isNaN(lat) || isNaN(lng)) continue;
+
+      const isoDate = ev.date_start ? this.parseDateToIso(ev.date_start) : undefined;
+      const dateDisplay =
+        ev.date ||
+        (ev.date_start
+          ? `${ev.date_start}${ev.date_end ? ' – ' + ev.date_end : ''}`
+          : '');
+      const eventUrl = ev.slug
+        ? `https://trovasagre.com/evento/${ev.slug}`
+        : `https://trovasagre.com/app?id=${ev.id}`;
+      const flyerUrl = ev.flyer_path ? `https://trovasagre.com${ev.flyer_path}` : '';
+      const category = ev.category || 'Sagra';
+
+      const contentHtml = `
+        <h4 style="font-size: 16px;">${dateDisplay}</h4>
+        <h5><a href="${eventUrl}" target="_blank" rel="noopener noreferrer">${ev.title}</a></h5>
+        <div class="geopopup-item">
+          ${
+            flyerUrl
+              ? `<a href="${eventUrl}" target="_blank" rel="noopener noreferrer" class="event__poster-crop-100"><img src="${flyerUrl}" width="100" height="100" alt="${ev.title}" /></a>`
+              : ''
+          }
+          <div class="event_content">
+            ${ev.location ? `<p class="event_orgas_bands"><b class="gris">Luogo:</b> ${ev.location}</p>` : ''}
+            ${ev.description ? `<p>${ev.description}</p>` : ''}
+            <p><span class="badge badge-event_types">${category}</span> <span class="badge badge-event_types" style="background:#dcfce7;color:#15803d;">TrovaSagre</span></p>
+          </div>
+          <br class="clear" />
+        </div>
+      `.trim();
+
+      results.push({
+        lat,
+        lng,
+        content: contentHtml,
+        evt_type: 'sagra',
+        ...(isoDate ? { date: isoDate } : {}),
+      });
+    }
+
+    return results;
   }
 
   private static readonly MONTH_MAP: Record<string, string> = {
@@ -201,25 +314,33 @@ export class EventsService implements OnModuleInit {
         lat: 45.5422,
         lng: 11.7861,
         date: '2026-09-01',
-        content: '<h4>Mardi 01 sept. 2026</h4><p>Padova, Italy</p><p>Traditional folk dance & live concert.</p>',
+        evt_type: 'balfolk',
+        content:
+          '<h4>Mardi 01 sept. 2026</h4><p>Padova, Italy</p><p>Traditional folk dance & live concert.</p>',
       },
       {
         lat: 45.4602,
         lng: 11.7449,
         date: '2026-08-28',
-        content: '<h4>Vendredi 28 août 2026</h4><p>Veneto, Italy</p><p>Live folk orchestra performance.</p>',
+        evt_type: 'balfolk',
+        content:
+          '<h4>Vendredi 28 août 2026</h4><p>Veneto, Italy</p><p>Live folk orchestra performance.</p>',
       },
       {
         lat: 43.6047,
         lng: 1.4442,
         date: '2026-09-12',
-        content: '<h4>Samedi 12 sept. 2026</h4><p>Toulouse, France</p><p>Workshops, bals folk, concerts.</p>',
+        evt_type: 'balfolk',
+        content:
+          '<h4>Samedi 12 sept. 2026</h4><p>Toulouse, France</p><p>Workshops, bals folk, concerts.</p>',
       },
       {
         lat: 48.8566,
         lng: 2.3522,
         date: '2026-09-20',
-        content: '<h4>Dimanche 20 sept. 2026</h4><p>Paris, France</p><p>Live neo-trad band sets.</p>',
+        evt_type: 'balfolk',
+        content:
+          '<h4>Dimanche 20 sept. 2026</h4><p>Paris, France</p><p>Live neo-trad band sets.</p>',
       },
     ];
   }

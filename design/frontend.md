@@ -23,12 +23,16 @@ This document specifies the architecture, UI/UX behavior, and data flow of the f
 * Fixed at the top-center of the viewport with a blurred translucent backdrop (`backdrop-filter: blur(12px)`).
 * **Main Bar:**
   * **Application Title & Icon:** 🎪 Festival Aggregator.
-  * **Event Counter Badge:** Displays the count of currently filtered events vs total loaded events (`X of Y events`).
+  * **Event Category Selector:**
+    * `All`: Displays both event categories.
+    * `🎵 Balfolk`: Filters exclusively for traditional folk dance & concert events (Royal Blue markers).
+    * `🥘 Sagra`: Filters exclusively for Italian food & cultural festivals (Warm Orange markers).
+  * **Event Counter Badge:** Displays the count of currently filtered events vs total loaded events (`X of Y`).
   * **Refresh Button:** Allows manually triggering a re-fetch of event data from the backend.
 * **Date Filter Bar:**
   * **Quick Presets:** `All Dates`, `This Weekend`, `Next 7 Days`, `Next 30 Days`.
   * **Custom Date Range Pickers:** `From` (`startDate`) and `To` (`endDate`) HTML5 `<input type="date">` pickers.
-  * **Clear Button:** Resets active filters back to `All Dates`.
+  * **Clear Button:** Resets active filters back to defaults.
 
 ### 2.3 User Feedback & Overlays
 * **Loading Toast:** Displayed while initial event data is being retrieved.
@@ -46,21 +50,27 @@ This document specifies the architecture, UI/UX behavior, and data flow of the f
     lat: number;
     lng: number;
     date?: string;   // ISO format YYYY-MM-DD
+    evt_type?: 'balfolk' | 'sagra' | string;
     content: string; // HTML snippet describing the event
   }
   ```
 
-### 3.2 Client-Side Date Filtering
-* A computed property `filteredEvents` reactively filters the full event list by matching `event.date >= startDate` and `event.date <= endDate`.
-* When the filter criteria change, the map automatically clears and redraws marker clusters and calls `map.fitBounds()` to re-center the map on the remaining events.
+### 3.2 Client-Side Filtering
+* A computed property `filteredEvents` reactively filters the full event list by matching:
+  1. `selectedType`: matches `balfolk`, `sagra`, or `all`.
+  2. `startDate` & `endDate`: matches event date range.
+* When filter criteria change, the map automatically clears and redraws marker clusters and calls `map.fitBounds()` to re-center the map on the remaining events.
 
-### 3.3 Marker & Cluster Rendering
-* Uses `L.markerClusterGroup` to cluster markers at higher zoom levels, preventing map lag when displaying hundreds of events across Europe.
-* Configures default Leaflet pin icons to avoid missing bundler asset paths.
+### 3.3 Distinct Marker Colors & Cluster Rendering
+* Uses `L.divIcon` with custom CSS pins to visually distinguish event categories:
+  * **Balfolk (`evt_type: 'balfolk'`):** Royal Blue gradient pin (`#2563eb`) with a musical note icon (`🎵`).
+  * **Sagra (`evt_type: 'sagra'`):** Warm Orange/Amber gradient pin (`#ea580c`) with a food icon (`🥘`).
+* Uses `L.markerClusterGroup` to cluster markers at higher zoom levels, preventing map lag.
 * For each event:
   1. Latitude and longitude are extracted from `lat` and `lng`.
-  2. HTML popup content from `content` is sanitized using `DOMPurify.sanitize()` before being bound to `marker.bindPopup()`.
-  3. Clicking a marker or cluster zooms into/opens the event popup with event title, dates, group information, and poster images.
+  2. The custom category pin is attached.
+  3. HTML popup content from `content` is sanitized using `DOMPurify.sanitize()` before being bound to `marker.bindPopup()`.
+  4. Clicking a marker or cluster zooms into/opens the event popup with event title, dates, group information, and poster images.
 
 ### 3.4 Auto-Fitting Viewport
 * Once markers are rendered, `map.fitBounds(bounds, { padding: [50, 50], maxZoom: 14 })` automatically adjusts the camera to focus on the geographic region containing active events.

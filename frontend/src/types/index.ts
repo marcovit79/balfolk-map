@@ -3,4 +3,5 @@ export interface FestivalEvent {
   lng: number;
   content: string;
   date?: string;
+  evt_type?: 'balfolk' | 'sagra' | string;
 }

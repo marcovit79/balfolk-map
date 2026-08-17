@@ -5,37 +5,46 @@ import 'leaflet.markercluster';
 import DOMPurify from 'dompurify';
 import { FestivalEvent } from '../types';
 
-// Fix default Leaflet icon paths in Vite
-const DefaultIcon = L.icon({
-  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41],
-});
-L.Marker.prototype.options.icon = DefaultIcon;
-
 const mapContainer = ref<HTMLElement | null>(null);
 const events = ref<FestivalEvent[]>([]);
 const isLoading = ref<boolean>(false);
 const errorMessage = ref<string | null>(null);
 
-// Date Filtering State
+// Date & Type Filtering State
 const startDate = ref<string>('');
 const endDate = ref<string>('');
 const activePreset = ref<string>('all');
+const selectedType = ref<'all' | 'balfolk' | 'sagra'>('all');
 
 let map: L.Map | null = null;
 let clusterGroup: any = null;
+
+// Custom Marker Icons for different event types
+const createCustomIcon = (evtType?: string) => {
+  const isBalfolk = evtType === 'balfolk';
+  const pinClass = isBalfolk ? 'pin-balfolk' : 'pin-sagra';
+  const iconEmoji = isBalfolk ? '🎵' : '🥘';
+
+  return L.divIcon({
+    className: 'custom-pin-wrapper',
+    html: `
+      <div class="custom-map-pin ${pinClass}">
+        <div class="pin-badge">${iconEmoji}</div>
+        <div class="pin-tip"></div>
+      </div>
+    `,
+    iconSize: [30, 38],
+    iconAnchor: [15, 38],
+    popupAnchor: [0, -36],
+  });
+};
 
 const initMap = () => {
   if (!mapContainer.value) return;
 
   // Initialize Map centered on Western/Central Europe
   map = L.map(mapContainer.value, {
-    center: [46.5, 5.5],
+    center: [44.5, 11.5],
     zoom: 6,
     zoomControl: false,
   });
@@ -116,13 +125,21 @@ const onCustomDateChange = () => {
 
 const clearFilter = () => {
   setPreset('all');
+  selectedType.value = 'all';
 };
+
+const balfolkCount = computed(() => events.value.filter(e => e.evt_type === 'balfolk').length);
+const sagraCount = computed(() => events.value.filter(e => e.evt_type === 'sagra').length);
 
 const filteredEvents = computed(() => {
   return events.value.filter((event) => {
-    if (!event.date) return true;
-    if (startDate.value && event.date < startDate.value) return false;
-    if (endDate.value && event.date > endDate.value) return false;
+    // Type Filter
+    if (selectedType.value !== 'all' && event.evt_type !== selectedType.value) {
+      return false;
+    }
+    // Date Filter
+    if (startDate.value && event.date && event.date < startDate.value) return false;
+    if (endDate.value && event.date && event.date > endDate.value) return false;
     return true;
   });
 });
@@ -140,10 +157,12 @@ const renderMarkers = (eventList: FestivalEvent[]) => {
     if (event.lat != null && event.lng != null) {
       const sanitizedContent = DOMPurify.sanitize(event.content || 'No details provided');
       
-      const marker = L.marker([event.lat, event.lng]);
+      const customIcon = createCustomIcon(event.evt_type);
+      const marker = L.marker([event.lat, event.lng], { icon: customIcon });
+      
       marker.bindPopup(sanitizedContent, {
         maxWidth: 320,
-        className: 'custom-festival-popup',
+        className: `custom-festival-popup popup-${event.evt_type || 'default'}`,
       });
 
       if (clusterGroup) {
@@ -176,18 +195,43 @@ onMounted(() => {
   <div class="festival-map-wrapper">
     <!-- Floating HUD Control & Filter Panel -->
     <header class="map-overlay-header">
-      <!-- Top Row: Title, Counter & Actions -->
+      <!-- Top Row: Title, Counter, Type Selector & Refresh -->
       <div class="header-main-row">
         <div class="map-title">
           <span>🎪</span>
           <span>Festival Aggregator</span>
         </div>
+
+        <!-- Event Type Filters -->
+        <div class="type-filter-group">
+          <button 
+            class="type-pill" 
+            :class="{ active: selectedType === 'all' }" 
+            @click="selectedType = 'all'">
+            All
+          </button>
+          <button 
+            class="type-pill pill-balfolk" 
+            :class="{ active: selectedType === 'balfolk' }" 
+            @click="selectedType = 'balfolk'">
+            <span class="color-dot dot-balfolk"></span>
+            🎵 Balfolk ({{ balfolkCount }})
+          </button>
+          <button 
+            class="type-pill pill-sagra" 
+            :class="{ active: selectedType === 'sagra' }" 
+            @click="selectedType = 'sagra'">
+            <span class="color-dot dot-sagra"></span>
+            🥘 Sagra ({{ sagraCount }})
+          </button>
+        </div>
+
         <div class="event-count-badge" v-if="!isLoading">
-          {{ filteredEvents.length }} <span v-if="filteredEvents.length !== events.length">of {{ events.length }}</span> events
+          {{ filteredEvents.length }} <span v-if="filteredEvents.length !== events.length">of {{ events.length }}</span>
         </div>
         <button class="refresh-btn" @click="fetchEvents" :disabled="isLoading">
           <span v-if="isLoading">⏳</span>
-          <span v-else>🔄 Refresh</span>
+          <span v-else>🔄</span>
         </button>
       </div>
 
@@ -240,10 +284,10 @@ onMounted(() => {
             />
           </div>
           <button 
-            v-if="startDate || endDate" 
+            v-if="startDate || endDate || selectedType !== 'all'" 
             class="clear-filter-btn" 
             @click="clearFilter"
-            title="Clear date filter">
+            title="Clear all filters">
             ✕ Clear
           </button>
         </div>
