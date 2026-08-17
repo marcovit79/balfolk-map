@@ -1,8 +1,8 @@
 # Description
-The `preferencies` microservice is a fake microservice thet will be used in the future.
+The Festival Aggregator microservice fetches event data from external sources and provides it to the frontend.
 
 # API
-- A simple `GET` endpoint on the `/events` path that return a list of events retrived
+- A `GET` endpoint on the `/events` path that returns a list of events retrieved
   by the following call:
   ```
     curl 'https://agendatrad.org/calendar/map.json' \
@@ -23,6 +23,6 @@ The `preferencies` microservice is a fake microservice thet will be used in the 
     --data-binary \
     $'------geckoformboundarydb99db75a3aaa440786d0c211ca390e3\r\nContent-Disposition: form-data; name="_method"\r\n\r\nPOST\r\n------geckoformboundarydb99db75a3aaa440786d0c211ca390e3\r\nContent-Disposition: form-data; name="data[Event][date_startInput]"\r\n\r\n17/08/2026\r\n------geckoformboundarydb99db75a3aaa440786d0c211ca390e3\r\nContent-Disposition: form-data; name="data[Event][date_start]"\r\n\r\n2026-08-17\r\n------geckoformboundarydb99db75a3aaa440786d0c211ca390e3\r\nContent-Disposition: form-data; name="data[Event][bounds]"\r\n\r\n-4.526367187500001,30.637912028341123,29.970703125000004,50.42951794712289\r\n------geckoformboundarydb99db75a3aaa440786d0c211ca390e3\r\nContent-Disposition: form-data; name="data[Event][zoom]"\r\n\r\n5\r\n------geckoformboundarydb99db75a3aaa440786d0c211ca390e3\r\nContent-Disposition: form-data; name="data[Check][types]"\r\n\r\n1\r\n------geckoformboundarydb99db75a3aaa440786d0c211ca390e3\r\nContent-Disposition: form-data; name="data[EventType][EventType]"\r\n\r\n\r\n------geckoformboundarydb99db75a3aaa440786d0c211ca390e3\r\nContent-Disposition: form-data; name="data[EventType][EventType][]"\r\n\r\n2\r\n------geckoformboundarydb99db75a3aaa440786d0c211ca390e3\r\nContent-Disposition: form-data; name="data[EventType][EventType][]"\r\n\r\n12\r\n------geckoformboundarydb99db75a3aaa440786d0c211ca390e3\r\nContent-Disposition: form-data; name="data[EventType][EventType][]"\r\n\r\n6\r\n------geckoformboundarydb99db75a3aaa440786d0c211ca390e3\r\nContent-Disposition: form-data; name="data[EventType][EventType][]"\r\n\r\n1\r\n------geckoformboundarydb99db75a3aaa440786d0c211ca390e3\r\nContent-Disposition: form-data; name="data[EventType][EventType][]"\r\n\r\n4\r\n------geckoformboundarydb99db75a3aaa440786d0c211ca390e3\r\nContent-Disposition: form-data; name="data[EventType][EventType][]"\r\n\r\n11\r\n------geckoformboundarydb99db75a3aaa440786d0c211ca390e3\r\nContent-Disposition: form-data; name="data[EventType][EventType][]"\r\n\r\n8\r\n------geckoformboundarydb99db75a3aaa440786d0c211ca390e3\r\nContent-Disposition: form-data; name="data[EventType][EventType][]"\r\n\r\n9\r\n------geckoformboundarydb99db75a3aaa440786d0c211ca390e3\r\nContent-Disposition: form-data; name="data[EventType][EventType][]"\r\n\r\n3\r\n------geckoformboundarydb99db75a3aaa440786d0c211ca390e3\r\nContent-Disposition: form-data; name="data[EventType][EventType][]"\r\n\r\n5\r\n------geckoformboundarydb99db75a3aaa440786d0c211ca390e3--\r\n'
   ```
-  The request is done at microservice startup and cached for ten minutes. If the cache expire it will be updated at the next request.
+  The request is executed at microservice startup and cached for ten minutes. If the cache expires, it will be updated on the next request.
 
 
