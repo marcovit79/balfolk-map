@@ -1,28 +1,29 @@
-# Definitions
-This chapter defines the semantic meaning of expressions used in the rest of
-the document.
+# Architecture & Deployment Specification
 
-## Frontend Project
-A frontend project is a TypeScript project that uses the [Vue.js](https://vuejs.org/) 
-framework. Every frontend project has its own build procedure, but all frontend 
-projects defined by an architecture document are deployed together in an Nginx container.
+This document defines the system architecture, deployment model, and networking specifications for the Festival Aggregator application.
 
-## Backend Project
-A backend project is a TypeScript project that uses the [NestJS](https://docs.nestjs.com/) 
-framework.
+---
 
+## 1. Definitions
 
-# Deployment Diagram
+* **Frontend Project:** A single-page application built with [Vue.js 3](https://vuejs.org/) and TypeScript. The production bundle is compiled into static assets and hosted within the API Gateway Nginx container.
+* **Backend Project:** A microservice built with the [NestJS](https://docs.nestjs.com/) TypeScript framework, running in its own container on Node.js 20 LTS.
+* **API Gateway:** An [Nginx](https://nginx.org/) reverse proxy container acting as the single public entry point for users, serving frontend static files and routing API requests to backend microservices.
+
+---
+
+## 2. Deployment Diagram
+
 ```mermaid
 architecture-beta
-    group vpc(cloud)[Docker Network]
+    group vpc(cloud)[Docker Network: vpc]
 
-    service api_gw(server)[API Gateway] in vpc
-    service fe(disk)[Front End] in vpc
+    service api_gw(server)[API Gateway (Nginx:80)] in vpc
+    service fe(disk)[Frontend Static Files] in vpc
     api_gw:B --> T:fe
 
-    service be_cfg(server)[Config Server] in vpc
-    service be_fa(server)[Festival aggregator] in vpc
+    service be_cfg(server)[Config Server:3000] in vpc
+    service be_fa(server)[Festival Aggregator:3000] in vpc
     
     junction center in vpc
     junction up in vpc
@@ -34,24 +35,41 @@ architecture-beta
     up:R --> L:be_cfg
     down:R --> L:be_fa
 
-
-    service clients(internet)[Users]
+    service clients(internet)[Clients / Web Browsers]
     clients:R --> L:api_gw
-    
 ```
-## Frontend
-In the architecture diagram, the frontend is the set of files obtained by building the Vue.js
-project. The Vue.js frontend project is described in the [related file](./frontend.md).
 
-## API Gateway
-The API gateway is a Docker container running Nginx that, on the root path, serves 
-production-ready frontend files. 
-The same Nginx instance is configured to proxy the paths `/api/<microservice_id>` to
-the Docker container named `microservice_id`.
+---
 
-## Config Server
-A backend project described in the [related file](./ms_preferences.md).
+## 3. Component Details & Routing Rules
 
-## Festival aggregator
-A backend project described in the [related file](./ms_festival_aggregator.md).
+### 3.1 API Gateway (`api_gateway`)
+* **Container Name:** `api_gateway`
+* **Base Image:** `docker.io/library/nginx:alpine`
+* **Exposed Ports:** `80` inside container, mapped to host port `8080` (or `80`).
+* **Routing Table:**
+  | Path Pattern | Target Destination | Behavior |
+  | :--- | :--- | :--- |
+  | `/` | `/usr/share/nginx/html` | Serves Vue.js SPA index and static assets (HTML/CSS/JS). |
+  | `/api/be_fa/(.*)` | `http://be_fa:3000/$1` | Strips `/api/be_fa/` prefix and forwards request to `be_fa` on port `3000`. |
+  | `/api/be_cfg/(.*)` | `http://be_cfg:3000/$1` | Strips `/api/be_cfg/` prefix and forwards request to `be_cfg` on port `3000`. |
 
+### 3.2 Frontend (`frontend`)
+* Single Page Application described in [frontend.md](./frontend.md).
+* Built via multi-stage Docker build and deployed directly onto the API Gateway filesystem.
+
+### 3.3 Config Server (`be_cfg`)
+* **Container Name:** `be_cfg`
+* **Internal Port:** `3000`
+* NestJS microservice described in [ms_preferences.md](./ms_preferences.md).
+
+### 3.4 Festival Aggregator (`be_fa`)
+* **Container Name:** `be_fa`
+* **Internal Port:** `3000`
+* NestJS microservice described in [ms_festival_aggregator.md](./ms_festival_aggregator.md).
+
+---
+
+## 4. Networking & Orchestration
+* All containers run inside an isolated Docker bridge network named `vpc`.
+* Orchestrated using `docker-compose.yml` (or Podman Compose) with automatic service discovery via container names.

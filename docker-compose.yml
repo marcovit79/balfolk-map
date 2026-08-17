@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  # Preferences / Config Microservice
+  be_cfg:
+    build:
+      context: ./ms_preferences
+      dockerfile: Dockerfile
+    container_name: be_cfg
+    restart: unless-stopped
+    environment:
+      - PORT=3000
+    networks:
+      - vpc
+
+  # Festival Aggregator Microservice
+  be_fa:
+    build:
+      context: ./ms_festival_aggregator
+      dockerfile: Dockerfile
+    container_name: be_fa
+    restart: unless-stopped
+    environment:
+      - PORT=3000
+    networks:
+      - vpc
+
+  # API Gateway + Frontend Static Hosting
+  api_gateway:
+    build:
+      context: .
+      dockerfile: api_gateway/Dockerfile
+    container_name: api_gateway
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    depends_on:
+      - be_cfg
+      - be_fa
+    networks:
+      - vpc
+
+networks:
+  vpc:
+    driver: bridge
