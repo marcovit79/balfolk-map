@@ -17,7 +17,8 @@ const activePreset = ref<string>('all');
 const selectedType = ref<'all' | 'balfolk' | 'sagra'>('all');
 
 let map: L.Map | null = null;
-let clusterGroup: any = null;
+let balfolkClusterGroup: any = null;
+let sagraClusterGroup: any = null;
 
 // Custom Marker Icons for different event types
 const createCustomIcon = (evtType?: string) => {
@@ -58,13 +59,39 @@ const initMap = () => {
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors',
   }).addTo(map);
 
-  // Marker cluster group for smooth rendering
+  // Initialize separate Marker Cluster Groups so Balfolk and Sagra are NEVER clustered together
   if ((L as any).markerClusterGroup) {
-    clusterGroup = (L as any).markerClusterGroup({
+    // 1. Balfolk cluster group (Royal Blue themed)
+    balfolkClusterGroup = (L as any).markerClusterGroup({
       showCoverageOnHover: false,
       maxClusterRadius: 40,
+      iconCreateFunction: (cluster: any) => {
+        const count = cluster.getChildCount();
+        return L.divIcon({
+          html: `<div class="cluster-bubble cluster-balfolk"><span>🎵 ${count}</span></div>`,
+          className: 'custom-cluster-wrapper',
+          iconSize: [42, 42],
+          iconAnchor: [21, 21],
+        });
+      },
     });
-    map.addLayer(clusterGroup);
+    map.addLayer(balfolkClusterGroup);
+
+    // 2. Sagra cluster group (Warm Orange themed)
+    sagraClusterGroup = (L as any).markerClusterGroup({
+      showCoverageOnHover: false,
+      maxClusterRadius: 40,
+      iconCreateFunction: (cluster: any) => {
+        const count = cluster.getChildCount();
+        return L.divIcon({
+          html: `<div class="cluster-bubble cluster-sagra"><span>🥘 ${count}</span></div>`,
+          className: 'custom-cluster-wrapper',
+          iconSize: [42, 42],
+          iconAnchor: [21, 21],
+        });
+      },
+    });
+    map.addLayer(sagraClusterGroup);
   }
 };
 
@@ -147,8 +174,11 @@ const filteredEvents = computed(() => {
 const renderMarkers = (eventList: FestivalEvent[]) => {
   if (!map) return;
 
-  if (clusterGroup) {
-    clusterGroup.clearLayers();
+  if (balfolkClusterGroup) {
+    balfolkClusterGroup.clearLayers();
+  }
+  if (sagraClusterGroup) {
+    sagraClusterGroup.clearLayers();
   }
 
   const bounds = L.latLngBounds([]);
@@ -165,8 +195,11 @@ const renderMarkers = (eventList: FestivalEvent[]) => {
         className: `custom-festival-popup popup-${event.evt_type || 'default'}`,
       });
 
-      if (clusterGroup) {
-        clusterGroup.addLayer(marker);
+      // Add marker to its respective type-specific cluster group
+      if (event.evt_type === 'balfolk' && balfolkClusterGroup) {
+        balfolkClusterGroup.addLayer(marker);
+      } else if (event.evt_type === 'sagra' && sagraClusterGroup) {
+        sagraClusterGroup.addLayer(marker);
       } else {
         marker.addTo(map!);
       }

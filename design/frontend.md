@@ -61,16 +61,19 @@ This document specifies the architecture, UI/UX behavior, and data flow of the f
   2. `startDate` & `endDate`: matches event date range.
 * When filter criteria change, the map automatically clears and redraws marker clusters and calls `map.fitBounds()` to re-center the map on the remaining events.
 
-### 3.3 Distinct Marker Colors & Cluster Rendering
+### 3.3 Distinct Marker Colors & Separate Cluster Groups
 * Uses `L.divIcon` with custom CSS pins to visually distinguish event categories:
   * **Balfolk (`evt_type: 'balfolk'`):** Royal Blue gradient pin (`#2563eb`) with a musical note icon (`🎵`).
   * **Sagra (`evt_type: 'sagra'`):** Warm Orange/Amber gradient pin (`#ea580c`) with a food icon (`🥘`).
-* Uses `L.markerClusterGroup` to cluster markers at higher zoom levels, preventing map lag.
+* **Type-Segregated Clustering:** Uses two independent `L.markerClusterGroup` instances (`balfolkClusterGroup` and `sagraClusterGroup`). Balfolk events and Sagra events are never clustered together:
+  * **Balfolk Clusters:** Displayed as blue bubble circles with a `🎵` badge and count.
+  * **Sagra Clusters:** Displayed as orange bubble circles with a `🥘` badge and count.
 * For each event:
   1. Latitude and longitude are extracted from `lat` and `lng`.
   2. The custom category pin is attached.
   3. HTML popup content from `content` is sanitized using `DOMPurify.sanitize()` before being bound to `marker.bindPopup()`.
-  4. Clicking a marker or cluster zooms into/opens the event popup with event title, dates, group information, and poster images.
+  4. The marker is added specifically to `balfolkClusterGroup` or `sagraClusterGroup`.
+  5. Clicking a marker or cluster zooms into/opens the event popup with event title, dates, group information, and poster images.
 
 ### 3.4 Auto-Fitting Viewport
 * Once markers are rendered, `map.fitBounds(bounds, { padding: [50, 50], maxZoom: 14 })` automatically adjusts the camera to focus on the geographic region containing active events.
