@@ -22,7 +22,7 @@ The aggregator concurrently queries two upstream sources in parallel using `Prom
 * **URL Rewriting:** Converts relative links (`href="/..."`) and images (`src="/..."`) to `https://agendatrad.org/...`.
 
 ### 2.2 Provider B: TrovaSagre (`trovasagre.com`)
-* **REST API Query:** Issues an HTTP `GET` request to `https://trovasagre.com/api/events?limit=250&page=1`.
+* **REST API Query:** Issues an initial HTTP `GET` request to `https://trovasagre.com/api/events?page=1&limit=100` to retrieve the initial batch and `total` count, then executes concurrent `Promise.allSettled` queries across all remaining pages to fetch 100% of active events.
 * **Payload Parsing:** Extracts event titles, locations, dates (`date_start`, `date_end`), pre-geocoded `lat` and `lng` coordinates, descriptions, and flyer images (`https://trovasagre.com/uploads/...`).
 * **HTML Generation:** Synthesizes styled popup HTML matching the map application's look and feel with a direct link to the TrovaSagre event page (`https://trovasagre.com/evento/...`).
 
@@ -32,7 +32,7 @@ The aggregator concurrently queries two upstream sources in parallel using `Prom
 
 All events from both sources are mapped to a unified `EventPopup` interface:
 1. **Event Type Tagging (`evt_type`):** Tagged with `'balfolk'` for traditional dance & music festivals from AgendaTrad, and `'sagra'` for culinary & cultural festival events from TrovaSagre.
-2. **Date Normalization:** Dates are parsed and standardized into ISO `YYYY-MM-DD` format (supporting French and Italian textual and slash formats).
+2. **Date Range Normalization (`start_date`, `end_date`):** Dates are parsed and standardized into ISO `YYYY-MM-DD` format (supporting French and Italian textual and slash formats). Events with a multi-day duration provide distinct start and end boundaries.
 3. **Type Coercion:** Ensures `lat` and `lng` are validated floating-point numbers.
 4. **Badge Tagging:** Popups include category badges indicating the event type and source provider.
 
@@ -58,14 +58,16 @@ All events from both sources are mapped to a unified `EventPopup` interface:
     {
       "lat": 43.5391,
       "lng": 10.9540,
-      "date": "2026-08-18",
+      "start_date": "2026-08-18",
+      "end_date": "2026-08-23",
       "evt_type": "sagra",
       "content": "<h4 style=\"font-size: 16px;\">2026-08-18 – 2026-08-23</h4><h5><a href=\"https://trovasagre.com/evento/sagra-della-lepre-gambassi-terme-2026\" target=\"_blank\">Sagra della Lepre</a></h5>..."
     },
     {
       "lat": 45.5422,
       "lng": 11.7861,
-      "date": "2026-09-01",
+      "start_date": "2026-09-01",
+      "end_date": "2026-09-01",
       "evt_type": "balfolk",
       "content": "<h4 style=\"font-size: 16px;\">mardi 01 sept. 2026</h4><h5><a href=\"https://agendatrad.org/e_2026-09/...\" target=\"_blank\">Festa a ballo...</a></h5>..."
     }

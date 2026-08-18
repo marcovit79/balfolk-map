@@ -49,9 +49,10 @@ This document specifies the architecture, UI/UX behavior, and data flow of the f
   interface FestivalEvent {
     lat: number;
     lng: number;
-    date?: string;   // ISO format YYYY-MM-DD
+    start_date?: string; // ISO format YYYY-MM-DD
+    end_date?: string;   // ISO format YYYY-MM-DD
     evt_type?: 'balfolk' | 'sagra' | string;
-    content: string; // HTML snippet describing the event
+    content: string;     // HTML snippet describing the event
   }
   ```
 

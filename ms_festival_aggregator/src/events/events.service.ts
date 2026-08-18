@@ -168,7 +168,7 @@ export class EventsService implements OnModuleInit {
         lng: typeof item.lng === 'string' ? parseFloat(item.lng) : item.lng,
         content: sanitizedContent,
         evt_type: 'balfolk',
-        ...(isoDate ? { date: isoDate } : {}),
+        ...(isoDate ? { start_date: isoDate, end_date: isoDate } : {}),
       };
     });
   }
@@ -176,9 +176,11 @@ export class EventsService implements OnModuleInit {
   private async fetchFromTrovaSagre(): Promise<EventPopup[]> {
     const userAgent =
       'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:130.0) Gecko/20100101 Firefox/130.0';
+    const limit = 100;
 
-    const response = await axios.get<TrovaSagreResponse>(
-      'https://trovasagre.com/api/events?limit=250&page=1',
+    // Step 1: Fetch first page to retrieve initial events and total count
+    const firstPageResponse = await axios.get<TrovaSagreResponse>(
+      `https://trovasagre.com/api/events?page=1&limit=${limit}`,
       {
         headers: {
           'User-Agent': userAgent,
@@ -188,20 +190,56 @@ export class EventsService implements OnModuleInit {
       },
     );
 
-    if (!response.data || !Array.isArray(response.data.events)) {
+    if (!firstPageResponse.data || !Array.isArray(firstPageResponse.data.events)) {
       return [];
     }
 
+    const allEvents = [...firstPageResponse.data.events];
+    const total = firstPageResponse.data.total || allEvents.length;
+    const totalPages = Math.ceil(total / limit);
+
+    // Step 2: Concurrently fetch all remaining pages
+    if (totalPages > 1) {
+      const pagePromises = [];
+      for (let p = 2; p <= totalPages; p++) {
+        pagePromises.push(
+          axios.get<TrovaSagreResponse>(
+            `https://trovasagre.com/api/events?page=${p}&limit=${limit}`,
+            {
+              headers: {
+                'User-Agent': userAgent,
+                'Accept': 'application/json',
+              },
+              timeout: 10000,
+            },
+          ),
+        );
+      }
+
+      const results = await Promise.allSettled(pagePromises);
+      for (const res of results) {
+        if (res.status === 'fulfilled' && Array.isArray(res.value.data?.events)) {
+          allEvents.push(...res.value.data.events);
+        }
+      }
+    }
+
+    this.logger.log(
+      `Fetched all ${allEvents.length} events across ${totalPages} pages from TrovaSagre.`,
+    );
+
     const results: EventPopup[] = [];
 
-    for (const ev of response.data.events) {
+    for (const ev of allEvents) {
       if (ev.lat == null || ev.lng == null) continue;
 
       const lat = typeof ev.lat === 'string' ? parseFloat(ev.lat) : ev.lat;
       const lng = typeof ev.lng === 'string' ? parseFloat(ev.lng) : ev.lng;
       if (isNaN(lat) || isNaN(lng)) continue;
 
-      const isoDate = ev.date_start ? this.parseDateToIso(ev.date_start) : undefined;
+      const isoStart = ev.date_start ? this.parseDateToIso(ev.date_start) : undefined;
+      const isoEnd =
+        (ev.date_end ? this.parseDateToIso(ev.date_end) : undefined) || isoStart;
       const dateDisplay =
         ev.date ||
         (ev.date_start
@@ -236,7 +274,7 @@ export class EventsService implements OnModuleInit {
         lng,
         content: contentHtml,
         evt_type: 'sagra',
-        ...(isoDate ? { date: isoDate } : {}),
+        ...(isoStart ? { start_date: isoStart, end_date: isoEnd || isoStart } : {}),
       });
     }
 
@@ -313,7 +351,8 @@ export class EventsService implements OnModuleInit {
       {
         lat: 45.5422,
         lng: 11.7861,
-        date: '2026-09-01',
+        start_date: '2026-09-01',
+        end_date: '2026-09-01',
         evt_type: 'balfolk',
         content:
           '<h4>Mardi 01 sept. 2026</h4><p>Padova, Italy</p><p>Traditional folk dance & live concert.</p>',
@@ -321,7 +360,8 @@ export class EventsService implements OnModuleInit {
       {
         lat: 45.4602,
         lng: 11.7449,
-        date: '2026-08-28',
+        start_date: '2026-08-28',
+        end_date: '2026-08-28',
         evt_type: 'balfolk',
         content:
           '<h4>Vendredi 28 août 2026</h4><p>Veneto, Italy</p><p>Live folk orchestra performance.</p>',
@@ -329,7 +369,8 @@ export class EventsService implements OnModuleInit {
       {
         lat: 43.6047,
         lng: 1.4442,
-        date: '2026-09-12',
+        start_date: '2026-09-12',
+        end_date: '2026-09-12',
         evt_type: 'balfolk',
         content:
           '<h4>Samedi 12 sept. 2026</h4><p>Toulouse, France</p><p>Workshops, bals folk, concerts.</p>',
@@ -337,7 +378,8 @@ export class EventsService implements OnModuleInit {
       {
         lat: 48.8566,
         lng: 2.3522,
-        date: '2026-09-20',
+        start_date: '2026-09-20',
+        end_date: '2026-09-20',
         evt_type: 'balfolk',
         content:
           '<h4>Dimanche 20 sept. 2026</h4><p>Paris, France</p><p>Live neo-trad band sets.</p>',

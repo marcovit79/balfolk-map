@@ -2,7 +2,8 @@ export interface EventPopup {
   lat: number;
   lng: number;
   content: string;
-  date?: string;
+  start_date?: string;
+  end_date?: string;
   evt_type?: 'balfolk' | 'sagra' | string;
 }
 

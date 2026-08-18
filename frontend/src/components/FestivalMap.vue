@@ -164,9 +164,12 @@ const filteredEvents = computed(() => {
     if (selectedType.value !== 'all' && event.evt_type !== selectedType.value) {
       return false;
     }
-    // Date Filter
-    if (startDate.value && event.date && event.date < startDate.value) return false;
-    if (endDate.value && event.date && event.date > endDate.value) return false;
+    // Date Filter (Range overlap)
+    const evStart = event.start_date || event.end_date;
+    const evEnd = event.end_date || event.start_date;
+
+    if (startDate.value && evEnd && evEnd < startDate.value) return false;
+    if (endDate.value && evStart && evStart > endDate.value) return false;
     return true;
   });
 });
