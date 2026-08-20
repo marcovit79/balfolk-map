@@ -88,11 +88,15 @@ A microservice-based architecture prototype featuring a Vue 3 + Leaflet frontend
 ### Prerequisites
 - Docker & Docker Compose (or Podman / Podman Compose)
 
-### One-Command Start
-Run the following from the root directory:
+### One-Command Start / Restart
+Run the provided helper script:
 ```bash
-podman-compose up -d
-# or: docker-compose up -d
+./restart.sh
+```
+Or manually with compose:
+```bash
+podman-compose up --build -d
+# or: docker-compose up --build -d
 ```
 Once started, open your browser and navigate to:
 **`http://localhost:8080`**
