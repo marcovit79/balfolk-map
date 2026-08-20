@@ -5,6 +5,7 @@
 # ==============================================================================
 # Usage:
 #   ./restart.sh               # Normal restart with rebuild
+#   ./restart.sh --shutdown    # Stop and remove running containers without rebuilding
 #   ./restart.sh --no-cache    # Force clean rebuild without Docker/Podman cache
 #   ./restart.sh --docker      # Force Docker Compose
 #   ./restart.sh --podman      # Force Podman Compose
@@ -26,6 +27,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "${SCRIPT_DIR}"
 
 # Default parameters
+SHUTDOWN_ONLY=false
 NO_CACHE=false
 FOLLOW_LOGS=false
 PREFERRED_TOOL="podman"
@@ -33,6 +35,10 @@ PREFERRED_TOOL="podman"
 # Parse arguments
 while [[ $# -gt 0 ]]; do
   case "$1" in
+    --shutdown|-s|--down|--stop)
+      SHUTDOWN_ONLY=true
+      shift
+      ;;
     --no-cache|-f)
       NO_CACHE=true
       shift
@@ -55,6 +61,7 @@ while [[ $# -gt 0 ]]; do
       echo "Usage: $0 [options]"
       echo ""
       echo "Options:"
+      echo "  -s, --shutdown    Stop and remove all running containers without rebuilding"
       echo "  -f, --no-cache    Rebuild container images from scratch without using cache"
       echo "  -l, --logs        Follow live logs after containers start"
       echo "      --docker      Explicitly use docker-compose / docker compose"
@@ -112,6 +119,21 @@ detect_compose() {
 }
 
 COMPOSE_CMD=$(detect_compose)
+
+# Handle --shutdown option
+if [[ "${SHUTDOWN_ONLY}" == true ]]; then
+  echo -e "${CYAN}======================================================================${NC}"
+  echo -e "${CYAN} 🛑 Festival Map Aggregator - Shutting Down Stack${NC}"
+  echo -e "${CYAN}======================================================================${NC}"
+  echo -e "Using engine: ${YELLOW}${COMPOSE_CMD}${NC}"
+  echo -e "Project path: ${SCRIPT_DIR}"
+  echo ""
+  echo -e "${CYAN}▶ Stopping and removing running containers...${NC}"
+  ${COMPOSE_CMD} down
+  echo ""
+  echo -e "${GREEN}✔ Stack successfully shut down!${NC}"
+  exit 0
+fi
 
 echo -e "${CYAN}======================================================================${NC}"
 echo -e "${CYAN} 🎪 Festival Map Aggregator - (Re)starting Stack${NC}"

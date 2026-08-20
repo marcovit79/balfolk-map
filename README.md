@@ -88,10 +88,18 @@ A microservice-based architecture prototype featuring a Vue 3 + Leaflet frontend
 ### Prerequisites
 - Docker & Docker Compose (or Podman / Podman Compose)
 
-### One-Command Start / Restart
+### One-Command Start / Restart / Shutdown
 Run the provided helper script:
 ```bash
+# Start or restart stack with rebuild:
 ./restart.sh
+
+# Stop and tear down all stack containers:
+./restart.sh --shutdown
+
+# Additional options:
+./restart.sh --no-cache   # Rebuild without cache
+./restart.sh --logs       # Follow live logs after start
 ```
 Or manually with compose:
 ```bash
