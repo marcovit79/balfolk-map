@@ -20,6 +20,7 @@ const selectedType = ref<'all' | 'balfolk' | 'sagra'>('all');
 let map: L.Map | null = null;
 let balfolkClusterGroup: any = null;
 let sagraClusterGroup: any = null;
+let isInitialFitDone = false;
 
 // Custom Marker Icons for different event types
 const createCustomIcon = (evtType?: string) => {
@@ -108,7 +109,12 @@ const fetchEvents = async () => {
 
     const data: FestivalEvent[] = await response.json();
     events.value = data;
-    renderMarkers(filteredEvents.value);
+    if (!isInitialFitDone) {
+      renderMarkers(filteredEvents.value, true);
+      isInitialFitDone = true;
+    } else {
+      renderMarkers(filteredEvents.value, false);
+    }
   } catch (error: any) {
     console.error('Failed to load events:', error);
     errorMessage.value = `Error loading events: ${error.message || 'Unable to connect'}`;
@@ -199,7 +205,7 @@ const filteredEvents = computed(() => {
   });
 });
 
-const renderMarkers = (eventList: FestivalEvent[]) => {
+const renderMarkers = (eventList: FestivalEvent[], fitView: boolean = false) => {
   if (!map) return;
 
   if (balfolkClusterGroup) {
@@ -236,14 +242,14 @@ const renderMarkers = (eventList: FestivalEvent[]) => {
     }
   });
 
-  // Fit bounds if markers exist
-  if (bounds.isValid()) {
+  // Only fit bounds if explicitly requested (e.g. initial load) to preserve user zoom/pan
+  if (fitView && bounds.isValid()) {
     map.fitBounds(bounds, { padding: [50, 50], maxZoom: 14 });
   }
 };
 
 watch(filteredEvents, (newList) => {
-  renderMarkers(newList);
+  renderMarkers(newList, false);
 });
 
 onMounted(() => {

@@ -61,7 +61,7 @@ This document specifies the architecture, UI/UX behavior, and data flow of the f
 * A computed property `filteredEvents` reactively filters the full event list by matching:
   1. `selectedType`: matches `balfolk`, `sagra`, or `all`.
   2. `startDate` & `endDate`: matches event date range.
-* When filter criteria change, the map automatically clears and redraws marker clusters and calls `map.fitBounds()` to re-center the map on the remaining events.
+* When filter criteria change, the map clears and redraws marker clusters while **preserving the user's current zoom level and pan coordinates**, preventing disruptive viewport jumps during interactive exploration.
 
 ### 3.3 Distinct Marker Colors & Separate Cluster Groups
 * Uses `L.divIcon` with custom CSS pins to visually distinguish event categories:
@@ -77,5 +77,5 @@ This document specifies the architecture, UI/UX behavior, and data flow of the f
   4. The marker is added specifically to `balfolkClusterGroup` or `sagraClusterGroup`.
   5. Clicking a marker or cluster zooms into/opens the event popup with event title, dates, group information, and poster images.
 
-### 3.4 Auto-Fitting Viewport
-* Once markers are rendered, `map.fitBounds(bounds, { padding: [50, 50], maxZoom: 14 })` automatically adjusts the camera to focus on the geographic region containing active events.
+### 3.4 Initial Auto-Fitting Viewport
+* Upon initial data load, `map.fitBounds(bounds, { padding: [50, 50], maxZoom: 14 })` automatically adjusts the camera to focus on the geographic region containing active events. Subsequent user interactions and filtering operations retain the viewport state.
