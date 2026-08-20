@@ -32,6 +32,7 @@ This document specifies the architecture, UI/UX behavior, and data flow of the f
 * **Date Filter Bar:**
   * **Quick Presets:** `All Dates`, `This Weekend`, `Next 7 Days`, `Next 30 Days`.
   * **Custom Date Range Pickers:** `From` (`startDate`) and `To` (`endDate`) HTML5 `<input type="date">` pickers.
+  * **Bind Toggle Button:** Interactive toggle positioned between `From` and `To` pickers. When active (`state: on`), changing either datepicker immediately synchronizes the other to match, ensuring single-day or locked-range exploration.
   * **Clear Button:** Resets active filters back to defaults.
 
 ### 2.3 User Feedback & Overlays

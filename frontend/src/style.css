@@ -237,6 +237,54 @@ html, body, #app {
   box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
 }
 
+/* Bind Toggle Button */
+.bind-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #f3f4f6;
+  border: 1px solid #d1d5db;
+  color: #4b5563;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.bind-toggle-btn:hover {
+  background: #e5e7eb;
+  color: #111827;
+  border-color: #9ca3af;
+}
+
+.bind-toggle-btn.active {
+  background: #2563eb;
+  border-color: #1d4ed8;
+  color: #ffffff;
+  box-shadow: 0 1px 4px rgba(37, 99, 235, 0.35);
+}
+
+.bind-toggle-btn.active:hover {
+  background: #1d4ed8;
+}
+
+.bind-svg {
+  display: inline-block;
+  vertical-align: middle;
+  flex-shrink: 0;
+}
+
+.bind-svg.unlinked {
+  opacity: 0.6;
+}
+
+.bind-btn-text {
+  line-height: 1;
+}
+
 .clear-filter-btn {
   background: #fee2e2;
   border: 1px solid #fca5a5;

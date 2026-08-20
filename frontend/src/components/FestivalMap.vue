@@ -13,6 +13,7 @@ const errorMessage = ref<string | null>(null);
 // Date & Type Filtering State
 const startDate = ref<string>('');
 const endDate = ref<string>('');
+const isDateBound = ref<boolean>(false);
 const activePreset = ref<string>('all');
 const selectedType = ref<'all' | 'balfolk' | 'sagra'>('all');
 
@@ -118,6 +119,9 @@ const fetchEvents = async () => {
 
 const setPreset = (preset: 'all' | 'weekend' | '7days' | '30days') => {
   activePreset.value = preset;
+  if (preset !== 'all') {
+    isDateBound.value = false;
+  }
   const now = new Date();
   const formatDate = (d: Date) => d.toISOString().split('T')[0];
 
@@ -146,7 +150,28 @@ const setPreset = (preset: 'all' | 'weekend' | '7days' | '30days') => {
   }
 };
 
-const onCustomDateChange = () => {
+const toggleDateBind = () => {
+  isDateBound.value = !isDateBound.value;
+  if (isDateBound.value) {
+    if (startDate.value) {
+      endDate.value = startDate.value;
+    } else if (endDate.value) {
+      startDate.value = endDate.value;
+    }
+  }
+};
+
+const onStartDateChange = () => {
+  if (isDateBound.value) {
+    endDate.value = startDate.value;
+  }
+  activePreset.value = 'custom';
+};
+
+const onEndDateChange = () => {
+  if (isDateBound.value) {
+    startDate.value = endDate.value;
+  }
   activePreset.value = 'custom';
 };
 
@@ -307,16 +332,40 @@ onMounted(() => {
               id="start-date"
               type="date" 
               v-model="startDate" 
-              @change="onCustomDateChange" 
+              @input="onStartDateChange"
+              @change="onStartDateChange" 
             />
           </div>
+
+          <!-- Bind / Link Toggle Button -->
+          <button 
+            type="button"
+            class="bind-toggle-btn" 
+            :class="{ active: isDateBound }" 
+            @click="toggleDateBind"
+            :title="isDateBound ? 'Dates linked: changes reflect in both (click to unbind)' : 'Link From and To dates (click to bind)'"
+            aria-label="Toggle date binding"
+          >
+            <svg v-if="isDateBound" class="bind-svg" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+              <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+            </svg>
+            <svg v-else class="bind-svg unlinked" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+              <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+              <line x1="2" y1="2" x2="22" y2="22"></line>
+            </svg>
+            <span class="bind-btn-text">{{ isDateBound ? 'Bound' : 'Bind' }}</span>
+          </button>
+
           <div class="date-input-group">
             <label for="end-date">To:</label>
             <input 
               id="end-date"
               type="date" 
               v-model="endDate" 
-              @change="onCustomDateChange" 
+              @input="onEndDateChange"
+              @change="onEndDateChange" 
             />
           </div>
           <button 
