@@ -30,9 +30,13 @@ A microservice-based architecture prototype featuring a Vue 3 + Leaflet frontend
 │        └────────┬────────┘ └─────────────────┘         │
 │                 │                                      │
 └─────────────────┼──────────────────────────────────────┘
-                  ▼
-   [ https://agendatrad.org ] (External Events Source)
+                  │
+  ┌───────────────┼───────────────┐
+  ▼               ▼               ▼
+[ AgendaTrad ] [ TrovaSagre ]  [ uMap TuttoBalfolk ]
+(Balfolk FR/EU)  (Sagre IT)       (Balfolk IT)
 ```
+
 
 ---
 

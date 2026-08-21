@@ -8,13 +8,13 @@ This document specifies the Festival Aggregator backend microservice, including 
 * **Framework:** NestJS (TypeScript, Node.js 20 LTS)
 * **Internal Port:** `3000`
 * **Container Name:** `be_fa`
-* **Purpose:** Concurrently aggregates events from multiple external providers ([AgendaTrad](https://agendatrad.org) for traditional dance festivals and [TrovaSagre](https://trovasagre.com) for Italian food and cultural sagre), normalizes their dates and HTML popups into a unified schema, caches them, and exposes them to the API Gateway.
+* **Purpose:** Concurrently aggregates events from multiple external providers ([AgendaTrad](https://agendatrad.org) for traditional dance festivals, [TrovaSagre](https://trovasagre.com) for Italian food and cultural sagre, and [uMap OpenStreetMap / TuttoBalfolk](https://umap.openstreetmap.fr/it/datalayer/1379731/c2c6318f-c677-4b24-acce-6e8a49a06bbe/) for Italian balfolk events), normalizes their dates and HTML popups into a unified schema, caches them, and exposes them to the API Gateway.
 
 ---
 
 ## 2. External Integration Providers
 
-The aggregator concurrently queries two upstream sources in parallel using `Promise.allSettled`:
+The aggregator concurrently queries three upstream sources in parallel using `Promise.allSettled`:
 
 ### 2.1 Provider A: AgendaTrad (`agendatrad.org`)
 * **Step 1 (Session Cookie Acquisition):** Issues an HTTP `GET` request to `https://agendatrad.org/calendar/map` with a desktop `User-Agent` to obtain session cookies.
@@ -26,12 +26,17 @@ The aggregator concurrently queries two upstream sources in parallel using `Prom
 * **Payload Parsing:** Extracts event titles, locations, dates (`date_start`, `date_end`), pre-geocoded `lat` and `lng` coordinates, descriptions, and flyer images (`https://trovasagre.com/uploads/...`).
 * **HTML Generation:** Synthesizes styled popup HTML matching the map application's look and feel with a direct link to the TrovaSagre event page (`https://trovasagre.com/evento/...`).
 
+### 2.3 Provider C: uMap OpenStreetMap / TuttoBalfolk (`umap.openstreetmap.fr`)
+* **GeoJSON Query:** Issues an HTTP `GET` request to `https://umap.openstreetmap.fr/it/datalayer/1379731/c2c6318f-c677-4b24-acce-6e8a49a06bbe/` retrieving the GeoJSON FeatureCollection.
+* **Payload Parsing:** Extracts point coordinates `[lng, lat]`, event titles (`title`/`name`), dates/locations from the description (e.g. `[Date] @ [Location]`), and markdown links (`[Evento Facebook](url)`).
+* **HTML Generation:** Synthesizes structured popups with location, dates, event links, and badges (`Balfolk` / `TuttoBalfolk`).
+
 ---
 
 ## 3. Data Transformation & Normalization
 
-All events from both sources are mapped to a unified `EventPopup` interface:
-1. **Event Type Tagging (`evt_type`):** Tagged with `'balfolk'` for traditional dance & music festivals from AgendaTrad, and `'sagra'` for culinary & cultural festival events from TrovaSagre.
+All events from all three sources are mapped to a unified `EventPopup` interface:
+1. **Event Type Tagging (`evt_type`):** Tagged with `'balfolk'` for traditional dance & music festivals from AgendaTrad and uMap (TuttoBalfolk), and `'sagra'` for culinary & cultural festival events from TrovaSagre.
 2. **Date Range Normalization (`start_date`, `end_date`):** Dates are parsed and standardized into ISO `YYYY-MM-DD` format (supporting French and Italian textual and slash formats). Events with a multi-day duration provide distinct start and end boundaries.
 3. **Type Coercion:** Ensures `lat` and `lng` are validated floating-point numbers.
 4. **Badge Tagging:** Popups include category badges indicating the event type and source provider.

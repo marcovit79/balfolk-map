@@ -43,3 +43,25 @@ export interface TrovaSagreResponse {
   limit?: number;
   events?: TrovaSagreEvent[];
 }
+
+export interface UmapFeature {
+  type: string;
+  id?: string;
+  geometry: {
+    type: string;
+    coordinates: [number, number]; // [lng, lat]
+  };
+  properties: {
+    title?: string;
+    name?: string;
+    description?: string;
+    [key: string]: any;
+  };
+}
+
+export interface UmapGeoJsonResponse {
+  type: string;
+  features?: UmapFeature[];
+  properties?: Record<string, any>;
+}
+

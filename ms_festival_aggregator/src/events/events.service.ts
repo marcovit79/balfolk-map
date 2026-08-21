@@ -5,6 +5,7 @@ import {
   EventPopup,
   AgendaTradResponse,
   TrovaSagreResponse,
+  UmapGeoJsonResponse,
 } from './interfaces/event.interface';
 
 @Injectable()
@@ -37,10 +38,11 @@ export class EventsService implements OnModuleInit {
     try {
       this.logger.log('Cache expired or empty. Fetching fresh events from upstream sources...');
 
-      // Concurrently fetch from both AgendaTrad and TrovaSagre
-      const [agendaTradResult, trovaSagreResult] = await Promise.allSettled([
+      // Concurrently fetch from AgendaTrad, TrovaSagre, and uMap (TuttoBalfolk)
+      const [agendaTradResult, trovaSagreResult, umapResult] = await Promise.allSettled([
         this.fetchFromAgendaTrad(),
         this.fetchFromTrovaSagre(),
+        this.fetchFromUmap(),
       ]);
 
       const combinedEvents: EventPopup[] = [];
@@ -60,6 +62,15 @@ export class EventsService implements OnModuleInit {
       } else {
         this.logger.error(
           `TrovaSagre fetch error: ${trovaSagreResult.reason?.message || trovaSagreResult.reason}`,
+        );
+      }
+
+      if (umapResult.status === 'fulfilled') {
+        this.logger.log(`Fetched ${umapResult.value.length} events from uMap (TuttoBalfolk).`);
+        combinedEvents.push(...umapResult.value);
+      } else {
+        this.logger.error(
+          `uMap fetch error: ${umapResult.reason?.message || umapResult.reason}`,
         );
       }
 
@@ -279,6 +290,164 @@ export class EventsService implements OnModuleInit {
     }
 
     return results;
+  }
+
+  private async fetchFromUmap(): Promise<EventPopup[]> {
+    const userAgent =
+      'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:130.0) Gecko/20100101 Firefox/130.0';
+    const umapUrl =
+      'https://umap.openstreetmap.fr/it/datalayer/1379731/c2c6318f-c677-4b24-acce-6e8a49a06bbe/';
+
+    const response = await axios.get<UmapGeoJsonResponse>(umapUrl, {
+      headers: {
+        'User-Agent': userAgent,
+        'Accept': 'application/json',
+      },
+      timeout: 10000,
+    });
+
+    if (!response.data || !Array.isArray(response.data.features)) {
+      return [];
+    }
+
+    const results: EventPopup[] = [];
+
+    for (const feature of response.data.features) {
+      if (
+        !feature.geometry ||
+        feature.geometry.type !== 'Point' ||
+        !Array.isArray(feature.geometry.coordinates)
+      ) {
+        continue;
+      }
+
+      // GeoJSON Point coordinates standard is [lng, lat]
+      const [lngRaw, latRaw] = feature.geometry.coordinates;
+      const lng = typeof lngRaw === 'string' ? parseFloat(lngRaw) : lngRaw;
+      const lat = typeof latRaw === 'string' ? parseFloat(latRaw) : latRaw;
+
+      if (isNaN(lat) || isNaN(lng)) continue;
+
+      const props = feature.properties || {};
+      const title = props.title || props.name || 'Evento Balfolk';
+      const description = (props.description || '').trim();
+
+      const lines = description.split('\n').map(l => l.trim()).filter(Boolean);
+      const firstLine = lines[0] || '';
+      const remainingLines = lines.slice(1);
+
+      let dateDisplay = '';
+      let location = '';
+
+      if (firstLine.includes('@')) {
+        const atIndex = firstLine.indexOf('@');
+        dateDisplay = firstLine.substring(0, atIndex).trim();
+        location = firstLine.substring(atIndex + 1).trim();
+      } else {
+        dateDisplay = firstLine;
+      }
+
+      const { startDate, endDate } = this.parseUmapDateRange(dateDisplay);
+
+      // Find primary link if any (e.g. Facebook event or share link)
+      let primaryLink: string | undefined;
+      for (const line of remainingLines) {
+        const linkMatch = line.match(/\[([^\]]+)\]\((https?:\/\/[^\)]+)\)/);
+        if (linkMatch) {
+          primaryLink = linkMatch[2];
+          break;
+        }
+      }
+
+      // Convert remaining lines into formatted HTML
+      const contentParts: string[] = [];
+      for (const line of remainingLines) {
+        // Convert markdown links [text](url) -> HTML
+        const htmlLine = line.replace(
+          /\[([^\]]+)\]\((https?:\/\/[^\)]+)\)/g,
+          '<a href="$2" target="_blank" rel="noopener noreferrer" style="color:#2563eb;font-weight:500;">$1</a>',
+        );
+
+        if (line.startsWith('+')) {
+          contentParts.push(
+            `<li style="margin-left: 14px; list-style-type: disc;">${htmlLine.substring(1).trim()}</li>`,
+          );
+        } else if (line.startsWith('(') && line.endsWith(')')) {
+          contentParts.push(
+            `<p class="gris" style="font-style: italic; font-size: 13px; margin: 4px 0;">${htmlLine}</p>`,
+          );
+        } else {
+          contentParts.push(`<p style="margin: 4px 0;">${htmlLine}</p>`);
+        }
+      }
+
+      const formattedLines = contentParts.join('');
+
+      const contentHtml = `
+        <h4 style="font-size: 16px;">${dateDisplay || (startDate ? `${startDate}${endDate && endDate !== startDate ? ' – ' + endDate : ''}` : '')}</h4>
+        <h5>${primaryLink ? `<a href="${primaryLink}" target="_blank" rel="noopener noreferrer">${title}</a>` : title}</h5>
+        <div class="geopopup-item">
+          <div class="event_content">
+            ${location ? `<p class="event_orgas_bands"><b class="gris">Luogo:</b> ${location}</p>` : ''}
+            ${formattedLines}
+            <p style="margin-top: 8px;"><span class="badge badge-event_types">Balfolk</span> <span class="badge badge-event_types" style="background:#e0f2fe;color:#0369a1;">TuttoBalfolk</span></p>
+          </div>
+          <br class="clear" />
+        </div>
+      `.trim();
+
+      results.push({
+        lat,
+        lng,
+        content: contentHtml,
+        evt_type: 'balfolk',
+        ...(startDate ? { start_date: startDate, end_date: endDate || startDate } : {}),
+      });
+    }
+
+    return results;
+  }
+
+  private parseUmapDateRange(datePart: string): { startDate?: string; endDate?: string } {
+    const cleaned = datePart.trim();
+
+    // 1. Multi-day range: e.g. "5-7 dicembre 2026", "17-29 settembre 2026", "25-29 agosto 2026"
+    const rangeMatch = cleaned.match(
+      /(\d{1,2})\s*-\s*(\d{1,2})\s+([a-zA-Z\u00C0-\u017F]+)\s+(\d{4})/i,
+    );
+    if (rangeMatch) {
+      const [, d1, d2, monthRaw, y] = rangeMatch;
+      const normalizedMonth = this.normalizeText(monthRaw);
+      const m = EventsService.MONTH_MAP[normalizedMonth];
+      if (m) {
+        return {
+          startDate: `${y}-${m}-${d1.padStart(2, '0')}`,
+          endDate: `${y}-${m}-${d2.padStart(2, '0')}`,
+        };
+      }
+    }
+
+    // 2. Single day with potential weekday: e.g. "14 maggio 2027", "Domenica 17 dicembre 2026", "Martedì 1 settembre 2026"
+    const singleMatch = cleaned.match(
+      /(\d{1,2})\s+([a-zA-Z\u00C0-\u017F]+)\s+(\d{4})/i,
+    );
+    if (singleMatch) {
+      const [, d, monthRaw, y] = singleMatch;
+      const normalizedMonth = this.normalizeText(monthRaw);
+      const m = EventsService.MONTH_MAP[normalizedMonth];
+      if (m) {
+        const iso = `${y}-${m}-${d.padStart(2, '0')}`;
+        return { startDate: iso, endDate: iso };
+      }
+    }
+
+    // 3. Fallback to parseDateToIso
+    const fallbackIso = this.parseDateToIso(cleaned);
+    if (fallbackIso) {
+      return { startDate: fallbackIso, endDate: fallbackIso };
+    }
+
+    return {};
   }
 
   private static readonly MONTH_MAP: Record<string, string> = {
