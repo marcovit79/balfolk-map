@@ -31,12 +31,17 @@ The aggregator concurrently queries three upstream sources in parallel using `Pr
 * **Payload Parsing:** Extracts point coordinates `[lng, lat]`, event titles (`title`/`name`), dates/locations from the description (e.g. `[Date] @ [Location]`), and markdown links (`[Evento Facebook](url)`).
 * **HTML Generation:** Synthesizes structured popups with location, dates, event links, and badges (`Balfolk` / `TuttoBalfolk`).
 
+### 2.4 Provider D: Folkdance.page (`folkdance.page`)
+* **JSON Feed Query:** Issues an HTTP `GET` request to `https://folkdance.page/index.json?styles=balfolk` retrieving international balfolk events across Europe, UK, and North America.
+* **Geocoding & Payload Parsing:** Matches `city` and `country` against a pre-compiled coordinates cache with dynamic Open-Meteo fallback geocoding.
+* **HTML Generation:** Synthesizes structured popups with bands/artists, organization, pricing, workshops, and links (`Balfolk` / `Folkdance.page`).
+
 ---
 
 ## 3. Data Transformation & Normalization
 
-All events from all three sources are mapped to a unified `EventPopup` interface:
-1. **Event Type Tagging (`evt_type`):** Tagged with `'balfolk'` for traditional dance & music festivals from AgendaTrad and uMap (TuttoBalfolk), and `'sagra'` for culinary & cultural festival events from TrovaSagre.
+All events from all sources are mapped to a unified `EventPopup` interface:
+1. **Event Type Tagging (`evt_type`):** Tagged with `'balfolk'` for traditional dance & music festivals from AgendaTrad, uMap (TuttoBalfolk), and Folkdance.page, and `'sagra'` for culinary & cultural festival events from TrovaSagre.
 2. **Date Range Normalization (`start_date`, `end_date`):** Dates are parsed and standardized into ISO `YYYY-MM-DD` format (supporting French and Italian textual and slash formats). Events with a multi-day duration provide distinct start and end boundaries.
 3. **Type Coercion:** Ensures `lat` and `lng` are validated floating-point numbers.
 4. **Badge Tagging:** Popups include category badges indicating the event type and source provider.
@@ -57,6 +62,11 @@ All events from all three sources are mapped to a unified `EventPopup` interface
 ### `GET /events`
 * **Description:** Returns the list of all cached festival and sagra map markers.
 * **Response Status:** `200 OK`
+
+### `GET /events/folkdance` (or `GET /debug/folkdance`)
+* **Description:** Separate, **uncached** debug endpoint to directly query and return normalized events from `folkdance.page`.
+* **Response Status:** `200 OK`
+
 * **Response Body (JSON):**
   ```json
   [

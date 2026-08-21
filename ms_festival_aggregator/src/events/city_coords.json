@@ -1,0 +1,526 @@
+{
+  "'s-Hertogenbosch, Netherlands": {
+    "lat": 51.6992,
+    "lng": 5.3042
+  },
+  "Adinkerke, Belgium": {
+    "lat": 51.0741,
+    "lng": 2.5991
+  },
+  "Amsterdam, Netherlands": {
+    "lat": 52.374,
+    "lng": 4.8897
+  },
+  "Antwerp, Belgium": {
+    "lat": 51.2205,
+    "lng": 4.4003
+  },
+  "Arcen, Netherlands": {
+    "lat": 51.4767,
+    "lng": 6.1806
+  },
+  "Ashover, UK": {
+    "lat": 53.1658,
+    "lng": -1.479
+  },
+  "Bancroft, Canada": {
+    "lat": -12.3648,
+    "lng": 27.8229
+  },
+  "Beesd, Netherlands": {
+    "lat": 51.8875,
+    "lng": 5.1917
+  },
+  "Belsele, Belgium": {
+    "lat": 51.146,
+    "lng": 4.0886
+  },
+  "Berlin, Germany": {
+    "lat": 52.5244,
+    "lng": 13.4105
+  },
+  "Bielefeld, Germany": {
+    "lat": 52.0333,
+    "lng": 8.5333
+  },
+  "Bonn, Germany": {
+    "lat": 50.7344,
+    "lng": 7.0955
+  },
+  "Boutersem, Belgium": {
+    "lat": 50.8411,
+    "lng": 4.8337
+  },
+  "Bovesse, Belgium": {
+    "lat": 50.5194,
+    "lng": 4.7809
+  },
+  "Breda, Netherlands": {
+    "lat": 51.5866,
+    "lng": 4.776
+  },
+  "Brighton, UK": {
+    "lat": 50.8284,
+    "lng": -0.1395
+  },
+  "Brno, Czechia": {
+    "lat": 49.1952,
+    "lng": 16.608
+  },
+  "Bruges, Belgium": {
+    "lat": 51.2089,
+    "lng": 3.2242
+  },
+  "Brussels, Belgium": {
+    "lat": 50.8505,
+    "lng": 4.3488
+  },
+  "Burghausen, Germany": {
+    "lat": 48.1692,
+    "lng": 12.8314
+  },
+  "Böblingen, Germany": {
+    "lat": 48.6821,
+    "lng": 9.0117
+  },
+  "Cambridge, UK": {
+    "lat": 52.2,
+    "lng": 0.1167
+  },
+  "Cercedilla, Spain": {
+    "lat": 40.741,
+    "lng": -4.0564
+  },
+  "Chastre, Belgium": {
+    "lat": 50.6007,
+    "lng": 4.634
+  },
+  "Chemnitz, Germany": {
+    "lat": 50.8357,
+    "lng": 12.9292
+  },
+  "Chicago, USA": {
+    "lat": 41.85,
+    "lng": -87.65
+  },
+  "Chidlow, Australia": {
+    "lat": -31.8609,
+    "lng": 116.2724
+  },
+  "Colditz, Germany": {
+    "lat": 51.1282,
+    "lng": 12.8029
+  },
+  "Cologne, Germany": {
+    "lat": 50.9333,
+    "lng": 6.95
+  },
+  "Crewkerne, UK": {
+    "lat": 50.883,
+    "lng": -2.7959
+  },
+  "Deventer, Netherlands": {
+    "lat": 52.255,
+    "lng": 6.1639
+  },
+  "Dorchester, UK": {
+    "lat": 42.2973,
+    "lng": -71.0745
+  },
+  "Dranouter, Belgium": {
+    "lat": 50.766,
+    "lng": 2.7839
+  },
+  "Dresden, Germany": {
+    "lat": 51.0509,
+    "lng": 13.7383
+  },
+  "Dummerston, USA": {
+    "lat": 42.9368,
+    "lng": -72.5723
+  },
+  "Dunedin, New Zealand": {
+    "lat": -45.8742,
+    "lng": 170.5036
+  },
+  "Eindhoven, Netherlands": {
+    "lat": 51.4408,
+    "lng": 5.4778
+  },
+  "Enschede, Netherlands": {
+    "lat": 52.2183,
+    "lng": 6.8958
+  },
+  "Erlangen, Germany": {
+    "lat": 49.591,
+    "lng": 11.0078
+  },
+  "Faimes, Belgium": {
+    "lat": 50.6625,
+    "lng": 5.26
+  },
+  "Fairlee, USA": {
+    "lat": 43.9076,
+    "lng": -72.1434
+  },
+  "Fenis, Italy": {
+    "lat": 45.7347,
+    "lng": 7.4954
+  },
+  "Formigine, Italy": {
+    "lat": 44.5727,
+    "lng": 10.8474
+  },
+  "Freiburg i. Br, Germany": {
+    "lat": 47.999,
+    "lng": 7.8421
+  },
+  "Freudenstadt, Germany": {
+    "lat": 48.4669,
+    "lng": 8.4137
+  },
+  "Geleen, Netherlands": {
+    "lat": 50.9742,
+    "lng": 5.8292
+  },
+  "Gennetines, France": {
+    "lat": 46.6364,
+    "lng": 3.4086
+  },
+  "Gent, Belgium": {
+    "lat": 51.05,
+    "lng": 3.7167
+  },
+  "Genval, Belgium": {
+    "lat": 50.7216,
+    "lng": 4.4938
+  },
+  "Gerpinnes, Belgium": {
+    "lat": 50.3379,
+    "lng": 4.5273
+  },
+  "Gomaringen, Germany": {
+    "lat": 48.4535,
+    "lng": 9.0958
+  },
+  "Gooik, Belgium": {
+    "lat": 50.7944,
+    "lng": 4.1138
+  },
+  "Groningen, Netherlands": {
+    "lat": 53.2192,
+    "lng": 6.5667
+  },
+  "Großschönach, Germany": {
+    "lat": 47.8618,
+    "lng": 9.2348
+  },
+  "Göppingen, Germany": {
+    "lat": 48.7035,
+    "lng": 9.6521
+  },
+  "Halsway, UK": {
+    "lat": 51.135,
+    "lng": -3.275
+  },
+  "Hamburg, Germany": {
+    "lat": 53.5507,
+    "lng": 9.993
+  },
+  "Hamois, Belgium": {
+    "lat": 50.3402,
+    "lng": 5.1562
+  },
+  "Hatfield, UK": {
+    "lat": 37.7792,
+    "lng": -97.4673
+  },
+  "Hathersage, UK": {
+    "lat": 53.3303,
+    "lng": -1.654
+  },
+  "Hay-on-Wye, UK": {
+    "lat": 52.0705,
+    "lng": -3.1274
+  },
+  "Hellevoetsluis, Netherlands": {
+    "lat": 51.8333,
+    "lng": 4.1333
+  },
+  "Herk-de-Stad, Belgium": {
+    "lat": 50.9401,
+    "lng": 5.1664
+  },
+  "Hohnstein, Germany": {
+    "lat": 50.9799,
+    "lng": 14.1141
+  },
+  "Hollingbourne, UK": {
+    "lat": 51.2677,
+    "lng": 0.6429
+  },
+  "Ilmenau, Germany": {
+    "lat": 50.6832,
+    "lng": 10.9186
+  },
+  "Janzé, France": {
+    "lat": 47.9596,
+    "lng": -1.4994
+  },
+  "Jura, Switzerland": {
+    "lat": 47.5177,
+    "lng": 29.0427
+  },
+  "Karlsruhe, Germany": {
+    "lat": 49.0094,
+    "lng": 8.4044
+  },
+  "Kortrijk, Belgium": {
+    "lat": 50.828,
+    "lng": 3.2649
+  },
+  "Kuartango, Spain": {
+    "lat": 42.8683,
+    "lng": -2.9328
+  },
+  "La Chapelle en Vercors, France": {
+    "lat": 44.9678,
+    "lng": 5.4167
+  },
+  "Lagrasse, France": {
+    "lat": 43.091,
+    "lng": 2.6194
+  },
+  "Lauriano, Italy": {
+    "lat": 45.1599,
+    "lng": 7.9947
+  },
+  "Leeuwarden, Netherlands": {
+    "lat": 53.2027,
+    "lng": 5.8097
+  },
+  "Leipzig, Germany": {
+    "lat": 51.3396,
+    "lng": 12.3713
+  },
+  "Leuven, Belgium": {
+    "lat": 50.8796,
+    "lng": 4.7009
+  },
+  "Liège, Belgium": {
+    "lat": 50.6337,
+    "lng": 5.5675
+  },
+  "London, UK": {
+    "lat": 51.5085,
+    "lng": -0.1257
+  },
+  "Lovendegem, Belgium": {
+    "lat": 51.1017,
+    "lng": 3.613
+  },
+  "Lubbeek, Belgium": {
+    "lat": 50.8828,
+    "lng": 4.839
+  },
+  "Maastricht, Netherlands": {
+    "lat": 50.8483,
+    "lng": 5.6889
+  },
+  "Marburg, Germany": {
+    "lat": 50.809,
+    "lng": 8.7707
+  },
+  "Marsinne, Belgium": {
+    "lat": 50.5298,
+    "lng": 5.1189
+  },
+  "Maubray, Belgium": {
+    "lat": 50.5508,
+    "lng": 3.504
+  },
+  "Mechelen, Belgium": {
+    "lat": 51.0257,
+    "lng": 4.4776
+  },
+  "Membruggen, Belgium": {
+    "lat": 50.8153,
+    "lng": 5.5337
+  },
+  "Munich, Germany": {
+    "lat": 48.1374,
+    "lng": 11.5755
+  },
+  "Namur, Belgium": {
+    "lat": 50.4669,
+    "lng": 4.8675
+  },
+  "Naples, Italy": {
+    "lat": 40.8522,
+    "lng": 14.2681
+  },
+  "Neufchâteau, Belgium": {
+    "lat": 49.8407,
+    "lng": 5.4353
+  },
+  "Nijmegen, Netherlands": {
+    "lat": 51.8425,
+    "lng": 5.8528
+  },
+  "Norwich, UK": {
+    "lat": 52.6278,
+    "lng": 1.2983
+  },
+  "Oostende, Belgium": {
+    "lat": 51.1939,
+    "lng": 2.8544
+  },
+  "Oxford, UK": {
+    "lat": 51.7522,
+    "lng": -1.256
+  },
+  "Paris, France": {
+    "lat": 48.8534,
+    "lng": 2.3488
+  },
+  "Perth, Australia": {
+    "lat": -31.9522,
+    "lng": 115.8614
+  },
+  "Platkow, Germany": {
+    "lat": 52.5843,
+    "lng": 14.3228
+  },
+  "Prague, Czechia": {
+    "lat": 50.088,
+    "lng": 14.4208
+  },
+  "Quevaucamps, Belgium": {
+    "lat": 50.5189,
+    "lng": 3.6813
+  },
+  "Rixensart, Belgium": {
+    "lat": 50.7123,
+    "lng": 4.5253
+  },
+  "Rochefort, Belgium": {
+    "lat": 50.1631,
+    "lng": 5.2216
+  },
+  "Rochester, USA": {
+    "lat": 43.1548,
+    "lng": -77.6156
+  },
+  "Rotterdam, Netherlands": {
+    "lat": 51.9225,
+    "lng": 4.4792
+  },
+  "Schwäbisch Gmünd, Germany": {
+    "lat": 48.7995,
+    "lng": 9.7981
+  },
+  "Sheffield, UK": {
+    "lat": 53.383,
+    "lng": -1.4659
+  },
+  "Shrewsbury, UK": {
+    "lat": 52.7101,
+    "lng": -2.7521
+  },
+  "Silver Bay, USA": {
+    "lat": 47.2944,
+    "lng": -91.2574
+  },
+  "Simmelsdorf, Germany": {
+    "lat": 49.5977,
+    "lng": 11.339
+  },
+  "Sint-Michielsgestel, Netherlands": {
+    "lat": 51.6417,
+    "lng": 5.3528
+  },
+  "Steenwijk, Netherlands": {
+    "lat": 52.7875,
+    "lng": 6.1208
+  },
+  "Stroud, UK": {
+    "lat": 35.7487,
+    "lng": -96.6581
+  },
+  "Stuttgart, Germany": {
+    "lat": 48.7823,
+    "lng": 9.177
+  },
+  "The Hague, Netherlands": {
+    "lat": 52.0767,
+    "lng": 4.2986
+  },
+  "Trossingen, Germany": {
+    "lat": 48.0767,
+    "lng": 8.6441
+  },
+  "Tübingen, Germany": {
+    "lat": 48.5227,
+    "lng": 9.0522
+  },
+  "Uffelte, Netherlands": {
+    "lat": 52.79,
+    "lng": 6.2806
+  },
+  "Utrecht, Netherlands": {
+    "lat": 52.0908,
+    "lng": 5.1222
+  },
+  "Vevey, Switzerland": {
+    "lat": 46.463,
+    "lng": 6.8434
+  },
+  "Vienna, Austria": {
+    "lat": 48.2085,
+    "lng": 16.3721
+  },
+  "Viernheim, Germany": {
+    "lat": 49.5403,
+    "lng": 8.5782
+  },
+  "Ville-en-Hesbaye, Belgium": {
+    "lat": 50.6174,
+    "lng": 5.1166
+  },
+  "Vilnius, Lithuania": {
+    "lat": 54.6892,
+    "lng": 25.2798
+  },
+  "Wageningen, Netherlands": {
+    "lat": 51.97,
+    "lng": 5.6667
+  },
+  "Wanze, Belgium": {
+    "lat": 50.5391,
+    "lng": 5.2085
+  },
+  "Warsaw, Poland": {
+    "lat": 52.2298,
+    "lng": 21.0118
+  },
+  "Warwick, UK": {
+    "lat": 41.7001,
+    "lng": -71.4162
+  },
+  "Westelbeers, Netherlands": {
+    "lat": 51.445,
+    "lng": 5.2111
+  },
+  "Zeist, Netherlands": {
+    "lat": 52.09,
+    "lng": 5.2333
+  },
+  "Zwaag, Netherlands": {
+    "lat": 52.6692,
+    "lng": 5.0764
+  },
+  "Zwolle, Netherlands": {
+    "lat": 52.5125,
+    "lng": 6.0944
+  }
+}

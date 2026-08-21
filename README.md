@@ -31,10 +31,10 @@ A microservice-based architecture prototype featuring a Vue 3 + Leaflet frontend
 │                 │                                      │
 └─────────────────┼──────────────────────────────────────┘
                   │
-  ┌───────────────┼───────────────┐
-  ▼               ▼               ▼
-[ AgendaTrad ] [ TrovaSagre ]  [ uMap TuttoBalfolk ]
-(Balfolk FR/EU)  (Sagre IT)       (Balfolk IT)
+  ┌───────────────┼───────────────┬──────────────────┐
+  ▼               ▼               ▼                  ▼
+[ AgendaTrad ] [ TrovaSagre ]  [ TuttoBalfolk ]  [ Folkdance.page ]
+(Balfolk FR/EU)  (Sagre IT)       (uMap IT)         (Balfolk Global)
 ```
 
 

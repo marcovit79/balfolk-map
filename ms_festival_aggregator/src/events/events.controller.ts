@@ -10,4 +10,14 @@ export class EventsController {
   async getEvents(): Promise<EventPopup[]> {
     return this.eventsService.getEvents();
   }
+
+  /**
+   * Separate, uncached endpoint for Folkdance.page query.
+   * Debug purpose only (to be removed in a future version).
+   */
+  @Get(['events/folkdance', 'debug/folkdance'])
+  async getFolkdanceDebugEvents(): Promise<EventPopup[]> {
+    return this.eventsService.fetchFromFolkdancePage();
+  }
 }
+

@@ -65,3 +65,30 @@ export interface UmapGeoJsonResponse {
   properties?: Record<string, any>;
 }
 
+export interface FolkdanceEvent {
+  name: string;
+  links?: string[];
+  start?: string;
+  end?: string;
+  start_date?: string;
+  end_date?: string;
+  country: string;
+  city: string;
+  state?: string;
+  styles?: string[];
+  workshop?: boolean;
+  social?: boolean;
+  bands?: string[];
+  callers?: string[];
+  organisation?: string;
+  details?: string;
+  price?: string;
+  cancelled?: boolean;
+  source?: string;
+}
+
+export interface FolkdanceResponse {
+  events?: FolkdanceEvent[];
+}
+
+

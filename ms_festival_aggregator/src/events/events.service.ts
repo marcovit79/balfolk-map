@@ -1,11 +1,13 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import axios from 'axios';
-import * as FormData from 'form-data';
+import FormData from 'form-data';
 import {
   EventPopup,
   AgendaTradResponse,
   TrovaSagreResponse,
   UmapGeoJsonResponse,
+  FolkdanceResponse,
+  FolkdanceEvent,
 } from './interfaces/event.interface';
 
 @Injectable()
@@ -38,11 +40,12 @@ export class EventsService implements OnModuleInit {
     try {
       this.logger.log('Cache expired or empty. Fetching fresh events from upstream sources...');
 
-      // Concurrently fetch from AgendaTrad, TrovaSagre, and uMap (TuttoBalfolk)
-      const [agendaTradResult, trovaSagreResult, umapResult] = await Promise.allSettled([
+      // Concurrently fetch from AgendaTrad, TrovaSagre, uMap (TuttoBalfolk), and Folkdance.page
+      const [agendaTradResult, trovaSagreResult, umapResult, folkdanceResult] = await Promise.allSettled([
         this.fetchFromAgendaTrad(),
         this.fetchFromTrovaSagre(),
-        this.fetchFromUmap(),
+        this.fetchTuttoBalfolkFromUmap(),
+        this.fetchFromFolkdancePage(),
       ]);
 
       const combinedEvents: EventPopup[] = [];
@@ -71,6 +74,15 @@ export class EventsService implements OnModuleInit {
       } else {
         this.logger.error(
           `uMap fetch error: ${umapResult.reason?.message || umapResult.reason}`,
+        );
+      }
+
+      if (folkdanceResult.status === 'fulfilled') {
+        this.logger.log(`Fetched ${folkdanceResult.value.length} events from Folkdance.page.`);
+        combinedEvents.push(...folkdanceResult.value);
+      } else {
+        this.logger.error(
+          `Folkdance.page fetch error: ${folkdanceResult.reason?.message || folkdanceResult.reason}`,
         );
       }
 
@@ -292,7 +304,7 @@ export class EventsService implements OnModuleInit {
     return results;
   }
 
-  private async fetchFromUmap(): Promise<EventPopup[]> {
+  private async fetchTuttoBalfolkFromUmap(): Promise<EventPopup[]> {
     const userAgent =
       'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:130.0) Gecko/20100101 Firefox/130.0';
     const umapUrl =
@@ -450,6 +462,148 @@ export class EventsService implements OnModuleInit {
     return {};
   }
 
+  private cityCoordsCache: Record<string, { lat: number; lng: number }> =
+    (function () {
+      try {
+        return require('./city_coords.json');
+      } catch {
+        return {};
+      }
+    })();
+
+  private async getCoordinatesForCity(
+    city: string,
+    country: string,
+  ): Promise<{ lat: number; lng: number } | null> {
+    const key = `${city}, ${country}`;
+    if (this.cityCoordsCache[key]) {
+      return this.cityCoordsCache[key];
+    }
+
+    try {
+      const q = encodeURIComponent(city);
+      const url = `https://geocoding-api.open-meteo.com/v1/search?name=${q}&count=5&language=en&format=json`;
+      const res = await axios.get(url, {
+        headers: { 'User-Agent': 'FestivalAggregator/1.0' },
+        timeout: 5000,
+      });
+      const results = res.data?.results;
+      if (Array.isArray(results) && results.length > 0) {
+        let matched = results.find(
+          (r: any) =>
+            country.toLowerCase().includes((r.country || '').toLowerCase()) ||
+            (r.country_code || '').toLowerCase().includes(country.toLowerCase()),
+        );
+        if (!matched) {
+          matched = results[0];
+        }
+        if (matched && matched.latitude && matched.longitude) {
+          const coords = {
+            lat: Math.round(matched.latitude * 10000) / 10000,
+            lng: Math.round(matched.longitude * 10000) / 10000,
+          };
+          this.cityCoordsCache[key] = coords;
+          return coords;
+        }
+      }
+    } catch (err) {
+      this.logger.warn(`Dynamic geocoding failed for ${key}: ${err.message}`);
+    }
+
+    return null;
+  }
+
+  async fetchFromFolkdancePage(): Promise<EventPopup[]> {
+    const userAgent =
+      'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:130.0) Gecko/20100101 Firefox/130.0';
+    const folkdanceUrl = 'https://folkdance.page/index.json?styles=balfolk';
+
+    const response = await axios.get<FolkdanceResponse>(folkdanceUrl, {
+      headers: {
+        'User-Agent': userAgent,
+        'Accept': 'application/json',
+      },
+      timeout: 15000,
+    });
+
+    if (!response.data || !Array.isArray(response.data.events)) {
+      return [];
+    }
+
+    const results: EventPopup[] = [];
+
+    for (const ev of response.data.events) {
+      const city = (ev.city || '').trim();
+      const country = (ev.country || '').trim();
+      if (!city || !country) continue;
+
+      const coords = await this.getCoordinatesForCity(city, country);
+      if (!coords) continue;
+
+      const startStr = ev.start || ev.start_date;
+      const endStr = ev.end || ev.end_date;
+
+      let isoStart: string | undefined;
+      let isoEnd: string | undefined;
+
+      if (startStr && startStr.length >= 10) {
+        isoStart = startStr.substring(0, 10);
+      }
+      if (endStr && endStr.length >= 10) {
+        isoEnd = endStr.substring(0, 10);
+      }
+      if (!isoEnd && isoStart) {
+        isoEnd = isoStart;
+      }
+
+      let dateDisplay = '';
+      if (isoStart && isoEnd) {
+        dateDisplay = isoStart === isoEnd ? isoStart : `${isoStart} – ${isoEnd}`;
+      } else if (isoStart) {
+        dateDisplay = isoStart;
+      }
+
+      const primaryLink =
+        ev.links && ev.links.length > 0 ? ev.links[0] : undefined;
+      const title = ev.name || 'Balfolk Event';
+      const location = `${city}, ${country}${ev.state ? ` (${ev.state})` : ''}`;
+      const bands = ev.bands && ev.bands.length > 0 ? ev.bands.join(', ') : '';
+      const organisation = ev.organisation || '';
+      const details = ev.details || '';
+      const price = ev.price || '';
+
+      const contentHtml = `
+        <h4 style="font-size: 16px;">${dateDisplay}</h4>
+        <h5>${primaryLink ? `<a href="${primaryLink}" target="_blank" rel="noopener noreferrer">${title}</a>` : title}</h5>
+        <div class="geopopup-item">
+          <div class="event_content">
+            <p class="event_orgas_bands"><b class="gris">Luogo:</b> ${location}</p>
+            ${bands ? `<p class="event_orgas_bands"><b class="gris">Artisti:</b> ${bands}</p>` : ''}
+            ${organisation ? `<p class="event_orgas_bands"><b class="gris">Organizzazione:</b> ${organisation}</p>` : ''}
+            ${details ? `<p style="margin: 4px 0;">${details}</p>` : ''}
+            ${price ? `<p class="event_orgas_bands"><b class="gris">Prezzo:</b> ${price}</p>` : ''}
+            <p style="margin-top: 8px;">
+              <span class="badge badge-event_types">Balfolk</span>
+              <span class="badge badge-event_types" style="background:#e0f2fe;color:#0369a1;">Folkdance.page</span>
+              ${ev.workshop ? '<span class="badge badge-event_types" style="background:#fef08a;color:#854d0e;">Workshop</span>' : ''}
+            </p>
+          </div>
+          <br class="clear" />
+        </div>
+      `.trim();
+
+      results.push({
+        lat: coords.lat,
+        lng: coords.lng,
+        content: contentHtml,
+        evt_type: 'balfolk',
+        ...(isoStart ? { start_date: isoStart, end_date: isoEnd || isoStart } : {}),
+      });
+    }
+
+    return results;
+  }
+
   private static readonly MONTH_MAP: Record<string, string> = {
     'janvier': '01', 'janv': '01', 'jan': '01', 'gennaio': '01', 'gen': '01',
     'fevrier': '02', 'fevr': '02', 'fev': '02', 'febbraio': '02', 'feb': '02',
@@ -516,43 +670,6 @@ export class EventsService implements OnModuleInit {
   }
 
   private getFallbackEvents(): EventPopup[] {
-    return [
-      {
-        lat: 45.5422,
-        lng: 11.7861,
-        start_date: '2026-09-01',
-        end_date: '2026-09-01',
-        evt_type: 'balfolk',
-        content:
-          '<h4>Mardi 01 sept. 2026</h4><p>Padova, Italy</p><p>Traditional folk dance & live concert.</p>',
-      },
-      {
-        lat: 45.4602,
-        lng: 11.7449,
-        start_date: '2026-08-28',
-        end_date: '2026-08-28',
-        evt_type: 'balfolk',
-        content:
-          '<h4>Vendredi 28 août 2026</h4><p>Veneto, Italy</p><p>Live folk orchestra performance.</p>',
-      },
-      {
-        lat: 43.6047,
-        lng: 1.4442,
-        start_date: '2026-09-12',
-        end_date: '2026-09-12',
-        evt_type: 'balfolk',
-        content:
-          '<h4>Samedi 12 sept. 2026</h4><p>Toulouse, France</p><p>Workshops, bals folk, concerts.</p>',
-      },
-      {
-        lat: 48.8566,
-        lng: 2.3522,
-        start_date: '2026-09-20',
-        end_date: '2026-09-20',
-        evt_type: 'balfolk',
-        content:
-          '<h4>Dimanche 20 sept. 2026</h4><p>Paris, France</p><p>Live neo-trad band sets.</p>',
-      },
-    ];
+    return [];
   }
 }
