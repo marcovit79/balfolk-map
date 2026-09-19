@@ -16,6 +16,17 @@ const endDate = ref<string>('');
 const isDateBound = ref<boolean>(false);
 const activePreset = ref<string>('all');
 const selectedType = ref<'all' | 'balfolk' | 'sagra'>('all');
+// On mobile devices, default to collapsed so the map is fully visible; on desktop default to expanded
+const isFilterCollapsed = ref<boolean>(
+  typeof window !== 'undefined' ? window.innerWidth <= 768 : false
+);
+
+const toggleFilterPanel = () => {
+  isFilterCollapsed.value = !isFilterCollapsed.value;
+  setTimeout(() => {
+    map?.invalidateSize();
+  }, 250);
+};
 
 let map: L.Map | null = null;
 let balfolkClusterGroup: any = null;
@@ -97,30 +108,93 @@ const initMap = () => {
   }
 };
 
+let workingApiBase: string | null = null;
+
+const getCandidateApiBases = (): string[] => {
+  const isCordova = typeof window !== 'undefined' && (
+    !!(window as any).cordova ||
+    window.location.protocol === 'file:' ||
+    (typeof window.navigator !== 'undefined' && /android/i.test(window.navigator.userAgent) && window.location.protocol.startsWith('http') && window.location.hostname === 'localhost')
+  );
+
+  const candidates: string[] = [];
+
+  const configured = typeof (window as any).API_BASE_URL === 'string' && (window as any).API_BASE_URL.trim() !== ''
+    ? (window as any).API_BASE_URL.replace(/\/$/, '')
+    : null;
+
+  const envBase = import.meta.env.VITE_API_BASE_URL
+    ? ((import.meta.env.VITE_API_BASE_URL as string) || '').replace(/\/$/, '')
+    : null;
+
+  if (isCordova) {
+    if (configured) candidates.push(configured);
+    if (envBase) candidates.push(envBase);
+    candidates.push('http://10.0.2.2:8080');
+    candidates.push('http://localhost:8080');
+    candidates.push('http://127.0.0.1:8080');
+    candidates.push('');
+  } else {
+    if (configured && !configured.includes('10.0.2.2')) candidates.push(configured);
+    if (envBase && !envBase.includes('10.0.2.2')) candidates.push(envBase);
+    candidates.push('');
+    candidates.push('http://localhost:8080');
+  }
+
+  return [...new Set(candidates.filter(c => c !== null))];
+};
+
 const fetchEvents = async () => {
   isLoading.value = true;
   errorMessage.value = null;
 
-  try {
-    const response = await fetch('/api/be_fa/events');
-    if (!response.ok) {
-      throw new Error(`API returned HTTP status ${response.status}`);
-    }
+  const candidates = workingApiBase !== null ? [workingApiBase] : getCandidateApiBases();
+  let lastError: any = null;
+  let success = false;
 
-    const data: FestivalEvent[] = await response.json();
-    events.value = data;
-    if (!isInitialFitDone) {
-      renderMarkers(filteredEvents.value, true);
-      isInitialFitDone = true;
-    } else {
-      renderMarkers(filteredEvents.value, false);
+  for (const base of candidates) {
+    try {
+      const url = `${base}/api/be_fa/events`;
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 4000);
+
+      const response = await fetch(url, { signal: controller.signal });
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        throw new Error(`API returned HTTP status ${response.status}`);
+      }
+
+      const data: FestivalEvent[] = await response.json();
+      events.value = data;
+      workingApiBase = base;
+      success = true;
+
+      if (!isInitialFitDone) {
+        renderMarkers(filteredEvents.value, true);
+        isInitialFitDone = true;
+      } else {
+        renderMarkers(filteredEvents.value, false);
+      }
+      break;
+    } catch (err: any) {
+      lastError = err;
+      console.warn(`[FestivalMap] Probe failed for '${base}/api/be_fa/events':`, err.message || err);
     }
-  } catch (error: any) {
-    console.error('Failed to load events:', error);
-    errorMessage.value = `Error loading events: ${error.message || 'Unable to connect'}`;
-  } finally {
-    isLoading.value = false;
   }
+
+  if (!success) {
+    console.error('[FestivalMap] All backend API candidate URLs failed:', lastError);
+    const attempted = candidates.map(c => c || '(relative /)').join(', ');
+    errorMessage.value = `Unable to connect to events API (probed: ${attempted}). Ensure backend stack is running: ./restart.sh`;
+  }
+
+  isLoading.value = false;
+};
+
+const reloadEvents = () => {
+  workingApiBase = null;
+  fetchEvents();
 };
 
 const setPreset = (preset: 'all' | 'weekend' | '7days' | '30days') => {
@@ -243,7 +317,8 @@ const renderMarkers = (eventList: FestivalEvent[], fitView: boolean = false) => 
   });
 
   // Only fit bounds if explicitly requested (e.g. initial load) to preserve user zoom/pan
-  if (fitView && bounds.isValid()) {
+  if (fitView && bounds.isValid() && map) {
+    map.invalidateSize();
     map.fitBounds(bounds, { padding: [50, 50], maxZoom: 14 });
   }
 };
@@ -254,6 +329,15 @@ watch(filteredEvents, (newList) => {
 
 onMounted(() => {
   initMap();
+  setTimeout(() => {
+    map?.invalidateSize();
+  }, 250);
+  setTimeout(() => {
+    map?.invalidateSize();
+  }, 750);
+  window.addEventListener('resize', () => {
+    map?.invalidateSize();
+  });
   fetchEvents();
 });
 </script>
@@ -261,14 +345,63 @@ onMounted(() => {
 <template>
   <div class="festival-map-wrapper">
     <!-- Floating HUD Control & Filter Panel -->
-    <header class="map-overlay-header">
-      <!-- Top Row: Title, Counter, Type Selector & Refresh -->
+    <header class="map-overlay-header" :class="{ 'is-collapsed': isFilterCollapsed }">
+      <!-- Top Row: Title, Counter, Active Filter Summary & Hide/Show Widget -->
       <div class="header-main-row">
-        <div class="map-title">
-          <span>🎪</span>
-          <span>Festival Aggregator</span>
+        <div 
+          class="map-title" 
+          @click="toggleFilterPanel" 
+          role="button" 
+          tabindex="0"
+          :title="isFilterCollapsed ? 'Click to show filters' : 'Click to hide filters'"
+        >
+          <span class="map-logo">🎪</span>
+          <span class="title-text-full">Festival Aggregator</span>
+          <span class="title-text-short">Festivals</span>
         </div>
 
+        <div class="header-actions">
+          <!-- Active filter preview indicator when panel is collapsed -->
+          <div v-if="isFilterCollapsed && (selectedType !== 'all' || activePreset !== 'all' || startDate || endDate)" class="active-filter-summary">
+            <span v-if="selectedType !== 'all'" class="summary-pill" :class="'pill-' + selectedType">
+              {{ selectedType === 'balfolk' ? '🎵 Balfolk' : '🥘 Sagra' }}
+            </span>
+            <span v-if="activePreset !== 'all'" class="summary-pill">
+              📅 {{ activePreset === 'weekend' ? 'Weekend' : activePreset }}
+            </span>
+          </div>
+
+          <!-- Event Count Badge -->
+          <div class="event-count-badge" v-if="!isLoading">
+            {{ filteredEvents.length }} <span class="count-total" v-if="filteredEvents.length !== events.length">/ {{ events.length }}</span>
+          </div>
+
+          <!-- Quick Refresh Button -->
+          <button class="refresh-btn" @click="reloadEvents" :disabled="isLoading" title="Refresh events">
+            <span v-if="isLoading">⏳</span>
+            <span v-else>🔄</span>
+          </button>
+
+          <!-- Hide/Show Filter Widget Toggle Button -->
+          <button 
+            type="button" 
+            class="filter-toggle-btn"
+            :class="{ active: !isFilterCollapsed }"
+            @click="toggleFilterPanel"
+            :aria-expanded="!isFilterCollapsed"
+            :title="isFilterCollapsed ? 'Show filters panel' : 'Hide filters panel'"
+          >
+            <span class="toggle-icon">🎛️</span>
+            <span class="toggle-label">{{ isFilterCollapsed ? 'Filters' : 'Hide' }}</span>
+            <svg class="chevron-icon" :class="{ rotated: !isFilterCollapsed }" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Collapsible Body: Event Types, Date Presets & Custom Pickers -->
+      <div class="collapsible-filters" v-show="!isFilterCollapsed">
         <!-- Event Type Filters -->
         <div class="type-filter-group">
           <button 
@@ -293,94 +426,86 @@ onMounted(() => {
           </button>
         </div>
 
-        <div class="event-count-badge" v-if="!isLoading">
-          {{ filteredEvents.length }} <span v-if="filteredEvents.length !== events.length">of {{ events.length }}</span>
-        </div>
-        <button class="refresh-btn" @click="fetchEvents" :disabled="isLoading">
-          <span v-if="isLoading">⏳</span>
-          <span v-else>🔄</span>
-        </button>
-      </div>
-
-      <!-- Filter Row: Date Presets & Pickers -->
-      <div class="header-filter-row">
-        <div class="filter-presets">
-          <button 
-            class="preset-pill" 
-            :class="{ active: activePreset === 'all' }" 
-            @click="setPreset('all')">
-            All Dates
-          </button>
-          <button 
-            class="preset-pill" 
-            :class="{ active: activePreset === 'weekend' }" 
-            @click="setPreset('weekend')">
-            This Weekend
-          </button>
-          <button 
-            class="preset-pill" 
-            :class="{ active: activePreset === '7days' }" 
-            @click="setPreset('7days')">
-            Next 7 Days
-          </button>
-          <button 
-            class="preset-pill" 
-            :class="{ active: activePreset === '30days' }" 
-            @click="setPreset('30days')">
-            Next 30 Days
-          </button>
-        </div>
-
-        <div class="custom-date-inputs">
-          <div class="date-input-group">
-            <label for="start-date">From:</label>
-            <input 
-              id="start-date"
-              type="date" 
-              v-model="startDate" 
-              @input="onStartDateChange"
-              @change="onStartDateChange" 
-            />
+        <!-- Filter Row: Date Presets & Pickers -->
+        <div class="header-filter-row">
+          <div class="filter-presets">
+            <button 
+              class="preset-pill" 
+              :class="{ active: activePreset === 'all' }" 
+              @click="setPreset('all')">
+              All Dates
+            </button>
+            <button 
+              class="preset-pill" 
+              :class="{ active: activePreset === 'weekend' }" 
+              @click="setPreset('weekend')">
+              This Weekend
+            </button>
+            <button 
+              class="preset-pill" 
+              :class="{ active: activePreset === '7days' }" 
+              @click="setPreset('7days')">
+              Next 7 Days
+            </button>
+            <button 
+              class="preset-pill" 
+              :class="{ active: activePreset === '30days' }" 
+              @click="setPreset('30days')">
+              Next 30 Days
+            </button>
           </div>
 
-          <!-- Bind / Link Toggle Button -->
-          <button 
-            type="button"
-            class="bind-toggle-btn" 
-            :class="{ active: isDateBound }" 
-            @click="toggleDateBind"
-            :title="isDateBound ? 'Dates linked: changes reflect in both (click to unbind)' : 'Link From and To dates (click to bind)'"
-            aria-label="Toggle date binding"
-          >
-            <svg v-if="isDateBound" class="bind-svg" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
-              <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
-            </svg>
-            <svg v-else class="bind-svg unlinked" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
-              <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
-              <line x1="2" y1="2" x2="22" y2="22"></line>
-            </svg>
-            <span class="bind-btn-text">{{ isDateBound ? 'Bound' : 'Bind' }}</span>
-          </button>
+          <div class="custom-date-inputs">
+            <div class="date-input-group">
+              <label for="start-date">From:</label>
+              <input 
+                id="start-date"
+                type="date" 
+                v-model="startDate" 
+                @input="onStartDateChange"
+                @change="onStartDateChange" 
+              />
+            </div>
 
-          <div class="date-input-group">
-            <label for="end-date">To:</label>
-            <input 
-              id="end-date"
-              type="date" 
-              v-model="endDate" 
-              @input="onEndDateChange"
-              @change="onEndDateChange" 
-            />
+            <!-- Bind / Link Toggle Button -->
+            <button 
+              type="button"
+              class="bind-toggle-btn" 
+              :class="{ active: isDateBound }" 
+              @click="toggleDateBind"
+              :title="isDateBound ? 'Dates linked: changes reflect in both (click to unbind)' : 'Link From and To dates (click to bind)'"
+              aria-label="Toggle date binding"
+            >
+              <svg v-if="isDateBound" class="bind-svg" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+                <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+              </svg>
+              <svg v-else class="bind-svg unlinked" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+                <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+                <line x1="2" y1="2" x2="22" y2="22"></line>
+              </svg>
+              <span class="bind-btn-text">{{ isDateBound ? 'Bound' : 'Bind' }}</span>
+            </button>
+
+            <div class="date-input-group">
+              <label for="end-date">To:</label>
+              <input 
+                id="end-date"
+                type="date" 
+                v-model="endDate" 
+                @input="onEndDateChange"
+                @change="onEndDateChange" 
+              />
+            </div>
+            <button 
+              v-if="startDate || endDate || selectedType !== 'all'" 
+              class="clear-filter-btn" 
+              @click="clearFilter"
+              title="Clear all filters">
+              ✕ Clear
+            </button>
           </div>
-          <button 
-            v-if="startDate || endDate || selectedType !== 'all'" 
-            class="clear-filter-btn" 
-            @click="clearFilter"
-            title="Clear all filters">
-            ✕ Clear
-          </button>
         </div>
       </div>
     </header>

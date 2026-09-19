@@ -82,6 +82,13 @@ A microservice-based architecture prototype featuring a Vue 3 + Leaflet frontend
 │   ├── Dockerfile
 │   ├── package.json
 │   └── tsconfig.json
+├── cordova_app/                # Apache Cordova Android App & Emulation Pipeline
+│   ├── config.xml              # Cordova configuration & Android permissions
+│   ├── build_apk.sh            # Automated APK build script
+│   ├── run_emulator.sh         # Local emulation runner (Web simulator / Android VM / ADB)
+│   ├── Dockerfile.build        # Android SDK + Cordova build container
+│   ├── docker-compose.emulator.yml # Containerized Android OS Emulator (noVNC)
+│   └── emulator/               # Web-based mobile device simulator
 └── docker-compose.yml          # Stack orchestration
 ```
 
@@ -167,3 +174,31 @@ Once started, open your browser and navigate to:
    - Integrated `leaflet.markercluster` to handle multiple pins cleanly.
    - Popups are sanitized via `DOMPurify` to ensure security against any unexpected HTML payloads.
    - Automatic `map.fitBounds()` to focus directly on available markers.
+
+---
+
+## 📱 Android Mobile App & Local Emulation
+
+An Apache Cordova-based pipeline is available under `cordova_app/` to build a native Android APK and emulate it locally.
+
+### 1. Build Android APK
+```bash
+cd cordova_app
+./build_apk.sh
+```
+The compiled APK is placed in `cordova_app/output/app-debug.apk`.
+
+### 2. Run Local Emulation
+```bash
+cd cordova_app
+# Web Mobile Device Simulator (default, port 8000)
+./run_emulator.sh --web
+
+# Containerized Android OS Emulator (with noVNC browser interface at port 6080)
+./run_emulator.sh --android
+
+# Sideload to connected Android phone / AVD via ADB
+./run_emulator.sh --device
+```
+See [`cordova_app/README.md`](cordova_app/README.md) for full details.
+

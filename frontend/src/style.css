@@ -15,33 +15,43 @@ html, body, #app {
 
 /* Fullscreen Map container */
 #map-container {
-  width: 100vw;
-  height: 100vh;
+  width: 100%;
+  height: 100%;
   position: absolute;
   top: 0;
   left: 0;
+  right: 0;
+  bottom: 0;
   z-index: 1;
 }
 
 /* Floating HUD header panel */
 .map-overlay-header {
   position: absolute;
-  top: 16px;
+  top: 14px;
   left: 50%;
   transform: translateX(-50%);
   z-index: 1000;
-  background: rgba(255, 255, 255, 0.95);
+  background: rgba(255, 255, 255, 0.96);
   backdrop-filter: blur(12px);
-  padding: 12px 18px;
+  padding: 10px 16px;
   border-radius: 16px;
-  box-shadow: 0 10px 35px rgba(0, 0, 0, 0.16);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.16);
   display: flex;
   flex-direction: column;
   gap: 10px;
   color: #1f2937;
-  border: 1px solid rgba(229, 231, 235, 0.9);
+  border: 1px solid rgba(229, 231, 235, 0.95);
   max-width: 95vw;
-  transition: all 0.25s ease;
+  width: max-content;
+  transition: all 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.map-overlay-header.is-collapsed {
+  padding: 6px 14px;
+  gap: 0;
+  border-radius: 9999px;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.15);
 }
 
 /* Header Top Row */
@@ -49,18 +59,121 @@ html, body, #app {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  flex-wrap: wrap;
+  gap: 10px;
+  width: 100%;
 }
 
 .map-title {
   font-weight: 700;
-  font-size: 15px;
+  font-size: 14px;
   display: flex;
   align-items: center;
   gap: 6px;
   color: #111827;
   letter-spacing: -0.2px;
+  cursor: pointer;
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.map-title:hover {
+  opacity: 0.85;
+}
+
+.map-logo {
+  font-size: 16px;
+}
+
+.title-text-short {
+  display: none;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+/* Filter Toggle Button (Widget) */
+.filter-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: #0f172a;
+  color: #ffffff;
+  border: 1px solid #0f172a;
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.filter-toggle-btn:hover {
+  background: #334155;
+  border-color: #334155;
+}
+
+.filter-toggle-btn.active {
+  background: #2563eb;
+  border-color: #1d4ed8;
+}
+
+.chevron-icon {
+  transition: transform 0.25s ease;
+}
+
+.chevron-icon.rotated {
+  transform: rotate(180deg);
+}
+
+/* Active filter preview when collapsed */
+.active-filter-summary {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.summary-pill {
+  font-size: 11px;
+  padding: 2px 7px;
+  border-radius: 9999px;
+  background: #f1f5f9;
+  color: #334155;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.summary-pill.pill-balfolk {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.summary-pill.pill-sagra {
+  background: #ffedd5;
+  color: #c2410c;
+}
+
+/* Collapsible Filter Body */
+.collapsible-filters {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  animation: fadeInDown 0.25s ease;
+}
+
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* Type Filter Pills */
@@ -484,4 +597,70 @@ html, body, #app {
   border-radius: 4px;
   margin-right: 4px;
   margin-top: 4px;
+}
+
+/* ── Responsive Mobile Optimizations ────────────────── */
+@media (max-width: 640px) {
+  .title-text-full {
+    display: none;
+  }
+
+  .title-text-short {
+    display: inline;
+  }
+
+  .map-overlay-header {
+    top: 10px;
+    width: 94vw;
+    max-width: 94vw;
+    box-sizing: border-box;
+    padding: 8px 12px;
+  }
+
+  .map-overlay-header.is-collapsed {
+    width: auto;
+    max-width: 94vw;
+    padding: 5px 10px;
+  }
+
+  .header-actions {
+    gap: 4px;
+  }
+
+  .filter-toggle-btn {
+    padding: 3px 8px;
+    font-size: 11px;
+    gap: 3px;
+  }
+
+  .refresh-btn {
+    padding: 3px 7px;
+    font-size: 12px;
+  }
+
+  .event-count-badge {
+    font-size: 11px;
+    padding: 2px 7px;
+  }
+
+  .header-filter-row {
+    gap: 8px;
+    padding-top: 6px;
+  }
+
+  .custom-date-inputs {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .date-input-group input[type="date"] {
+    max-width: 115px;
+    font-size: 11px;
+    padding: 3px 4px;
+  }
+
+  .preset-pill, .type-pill {
+    font-size: 11px;
+    padding: 3px 8px;
+  }
 }
