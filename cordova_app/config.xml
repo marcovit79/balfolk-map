@@ -1,0 +1,44 @@
+<?xml version='1.0' encoding='utf-8'?>
+<widget id="com.festivalmaps.app" version="1.0.0"
+        xmlns="http://www.w3.org/ns/widgets"
+        xmlns:cdv="http://cordova.apache.org/ns/1.0"
+        xmlns:android="http://schemas.android.com/apk/res/android">
+    <name>FestivalMap</name>
+    <description>Festival Map Aggregator Mobile App</description>
+    <author email="dev@festivalmaps.local" href="https://festivalmaps.local">Festival Map Team</author>
+    
+    <content src="index.html" />
+    
+    <!-- Access Rules -->
+    <access origin="*" />
+    <allow-intent href="http://*/*" />
+    <allow-intent href="https://*/*" />
+    <allow-intent href="tel:*" />
+    <allow-intent href="sms:*" />
+    <allow-intent href="mailto:*" />
+    <allow-intent href="geo:*" />
+    <allow-navigation href="*" />
+
+    <!-- Preferences -->
+    <preference name="DisallowOverscroll" value="true" />
+    <preference name="Orientation" value="default" />
+    <preference name="android-minSdkVersion" value="24" />
+    <preference name="android-targetSdkVersion" value="34" />
+    <preference name="android-compileSdkVersion" value="34" />
+    <preference name="android-buildToolsVersion" value="34.0.0" />
+    <preference name="AndroidInsecureFileModeEnabled" value="true" />
+    <preference name="KeepRunning" value="true" />
+    <preference name="StatusBarOverlaysWebView" value="false" />
+    <preference name="StatusBarBackgroundColor" value="#0f172a" />
+    <preference name="StatusBarStyle" value="lightcontent" />
+
+    <!-- Android Platform Configuration -->
+    <platform name="android">
+        <allow-intent href="market:*" />
+        
+        <!-- Enable cleartext HTTP traffic so app can connect to local dev servers -->
+        <edit-config file="app/src/main/AndroidManifest.xml" mode="merge" target="/manifest/application">
+            <application android:usesCleartextTraffic="true" />
+        </edit-config>
+    </platform>
+</widget>

@@ -2,6 +2,15 @@
 frontend/node_modules/
 frontend/dist/
 
+# Cordova App
+cordova_app/www/
+cordova_app/platforms/
+cordova_app/plugins/
+cordova_app/node_modules/
+cordova_app/.gradle/
+cordova_app/output/*.apk
+!cordova_app/output/README.md
+
 # Python
 __pycache__/
 *.pyc

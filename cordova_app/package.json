@@ -1,0 +1,28 @@
+{
+  "name": "com.festivalmaps.app",
+  "displayName": "FestivalMap",
+  "version": "1.0.0",
+  "description": "Festival Map Aggregator Android Application",
+  "main": "index.js",
+  "scripts": {
+    "build": "./build_apk.sh",
+    "build:apk": "./build_apk.sh",
+    "emulate": "./run_emulator.sh",
+    "emulate:web": "./run_emulator.sh --web",
+    "emulate:android": "./run_emulator.sh --android"
+  },
+  "keywords": [
+    "ecosystem:cordova"
+  ],
+  "author": "Festival Map Team",
+  "license": "Apache-2.0",
+  "dependencies": {
+    "cordova-android": "13.0.0"
+  },
+  "cordova": {
+    "plugins": {},
+    "platforms": [
+      "android"
+    ]
+  }
+}

@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  # Containerized Android OS Emulator with web noVNC interface
+  android_emulator:
+    image: docker.io/budtmo/docker-android:emulator_11.0
+    container_name: festival_maps_android_emulator
+    restart: unless-stopped
+    privileged: true
+    devices:
+      - /dev/kvm:/dev/kvm
+    environment:
+      - DEVICE="Samsung Galaxy S10"
+      - WEB_VNC=true
+      - EMULATOR_ADDITIONAL_ARGS=-netdelay none -no-snapshot-load
+    ports:
+      - "6080:6080"   # Web-based interactive screen (noVNC)
+      - "5555:5555"   # ADB network port
+    volumes:
+      - ./output:/home/androidusr/apk:ro

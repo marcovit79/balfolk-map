@@ -1,0 +1,8 @@
+node_modules/
+platforms/
+plugins/
+.gradle/
+www/
+output/*.apk
+!output/README.md
+
