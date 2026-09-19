@@ -11,7 +11,9 @@ if [ ! -d "platforms/android" ]; then
     echo "Adding Android platform (cordova-android 13)..."
     cordova platform add android@13.0.0 --save
 else
-    echo "Android platform already initialized."
+    echo "Android platform already initialized. Synchronizing plugins..."
+    cordova plugin add cordova-plugin-advanced-http --save || true
+    cordova prepare
 fi
 
 echo "Compiling Android APK (Debug build)..."

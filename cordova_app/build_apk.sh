@@ -108,8 +108,8 @@ if command -v npm >/dev/null 2>&1; then
 else
     echo -e "Host npm not found. Using ${YELLOW}${CONTAINER_CMD} node:20-alpine${NC} container..."
     ${CONTAINER_CMD} run --rm \
-        -v "${FRONTEND_DIR}:/app:z" \
-        -w /app \
+        -v "${ROOT_DIR}:/workspace:z" \
+        -w /workspace/frontend \
         docker.io/library/node:20-alpine \
         sh -c "npm install && npm run build"
 fi
@@ -131,7 +131,7 @@ api_base = sys.argv[2]
 with open(path, 'r', encoding='utf-8') as f:
     html = f.read()
 if 'cordova.js' not in html:
-    injection = f'<script>if (window.location.protocol === \"file:\" || !!window.cordova || window.location.hostname === \"localhost\") {{ window.API_BASE_URL = window.API_BASE_URL || \"{api_base}\"; }}</script>\\n<script src=\"cordova.js\"></script>\\n</body>'
+    injection = f'<script>if (window.location.protocol === \"file:\") {{ window.API_BASE_URL = window.API_BASE_URL || \"{api_base}\"; }}</script>\\n<script src=\"cordova.js\"></script>\\n</body>'
     html = html.replace('</body>', injection)
     with open(path, 'w', encoding='utf-8') as f:
         f.write(html)

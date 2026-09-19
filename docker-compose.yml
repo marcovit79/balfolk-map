@@ -16,8 +16,8 @@ services:
   # Festival Aggregator Microservice
   be_fa:
     build:
-      context: ./ms_festival_aggregator
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ms_festival_aggregator/Dockerfile
     container_name: be_fa
     restart: unless-stopped
     environment:

@@ -192,11 +192,8 @@ check_backend() {
     if curl -s -f -m 3 http://localhost:8080/api/be_fa/events >/dev/null 2>&1; then
         echo -e "${GREEN}✔ Backend API Gateway is reachable at http://localhost:8080${NC}"
     else
-        echo -e "${YELLOW}======================================================================${NC}"
-        echo -e "${YELLOW} ⚠️  WARNING: Backend API at http://localhost:8080 is not reachable!${NC}"
-        echo -e "${YELLOW}    The mobile app needs the backend microservices to fetch events.${NC}"
-        echo -e "${YELLOW}    Please make sure to run: ./restart.sh in another terminal${NC}"
-        echo -e "${YELLOW}======================================================================${NC}"
+        echo -e "${YELLOW}ℹ Backend API at http://localhost:8080 is not running.${NC}"
+        echo -e "${YELLOW}  (Standalone mobile APK will aggregate directly on-device. For multi-tier web mode, run ./restart.sh)${NC}"
     fi
 }
 
@@ -348,7 +345,10 @@ elif [[ "${MODE}" == "device" ]]; then
     echo -e "${CYAN} 📲 Installing APK via ADB${NC}"
     echo -e "${CYAN}======================================================================${NC}"
     if ! command -v adb >/dev/null 2>&1; then
-        echo -e "${RED}[ERROR] 'adb' command not found on host. Ensure Android SDK platform-tools are installed and in PATH.${NC}"
+        echo -e "${RED}[ERROR] 'adb' command not found on host.${NC}"
+        echo -e "${YELLOW}To install it on Ubuntu/Debian, run:${NC}"
+        echo -e "  sudo apt update && sudo apt install -y adb"
+        echo ""
         exit 1
     fi
 

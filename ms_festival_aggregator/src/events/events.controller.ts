@@ -1,6 +1,6 @@
 import { Controller, Get } from '@nestjs/common';
 import { EventsService } from './events.service';
-import { EventPopup } from './interfaces/event.interface';
+import { EventPopup } from '../../../shared/interfaces/event.interface';
 
 @Controller()
 export class EventsController {

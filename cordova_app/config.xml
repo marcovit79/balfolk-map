@@ -19,6 +19,9 @@
     <allow-intent href="geo:*" />
     <allow-navigation href="*" />
 
+    <!-- Plugins -->
+    <plugin name="cordova-plugin-advanced-http" spec="^3.3.1" />
+
     <!-- Preferences -->
     <preference name="DisallowOverscroll" value="true" />
     <preference name="Orientation" value="default" />

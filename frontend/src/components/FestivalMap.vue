@@ -4,6 +4,7 @@ import L from 'leaflet';
 import 'leaflet.markercluster';
 import DOMPurify from 'dompurify';
 import { FestivalEvent } from '../types';
+import { getEventProvider } from '../services/event-provider.factory';
 
 const mapContainer = ref<HTMLElement | null>(null);
 const events = ref<FestivalEvent[]>([]);
@@ -108,93 +109,31 @@ const initMap = () => {
   }
 };
 
-let workingApiBase: string | null = null;
-
-const getCandidateApiBases = (): string[] => {
-  const isCordova = typeof window !== 'undefined' && (
-    !!(window as any).cordova ||
-    window.location.protocol === 'file:' ||
-    (typeof window.navigator !== 'undefined' && /android/i.test(window.navigator.userAgent) && window.location.protocol.startsWith('http') && window.location.hostname === 'localhost')
-  );
-
-  const candidates: string[] = [];
-
-  const configured = typeof (window as any).API_BASE_URL === 'string' && (window as any).API_BASE_URL.trim() !== ''
-    ? (window as any).API_BASE_URL.replace(/\/$/, '')
-    : null;
-
-  const envBase = import.meta.env.VITE_API_BASE_URL
-    ? ((import.meta.env.VITE_API_BASE_URL as string) || '').replace(/\/$/, '')
-    : null;
-
-  if (isCordova) {
-    if (configured) candidates.push(configured);
-    if (envBase) candidates.push(envBase);
-    candidates.push('http://10.0.2.2:8080');
-    candidates.push('http://localhost:8080');
-    candidates.push('http://127.0.0.1:8080');
-    candidates.push('');
-  } else {
-    if (configured && !configured.includes('10.0.2.2')) candidates.push(configured);
-    if (envBase && !envBase.includes('10.0.2.2')) candidates.push(envBase);
-    candidates.push('');
-    candidates.push('http://localhost:8080');
-  }
-
-  return [...new Set(candidates.filter(c => c !== null))];
-};
-
-const fetchEvents = async () => {
+const fetchEvents = async (forceRefresh = false) => {
   isLoading.value = true;
   errorMessage.value = null;
 
-  const candidates = workingApiBase !== null ? [workingApiBase] : getCandidateApiBases();
-  let lastError: any = null;
-  let success = false;
+  try {
+    const provider = getEventProvider();
+    const data = await provider.getEvents(forceRefresh);
+    events.value = data;
 
-  for (const base of candidates) {
-    try {
-      const url = `${base}/api/be_fa/events`;
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 4000);
-
-      const response = await fetch(url, { signal: controller.signal });
-      clearTimeout(timeoutId);
-
-      if (!response.ok) {
-        throw new Error(`API returned HTTP status ${response.status}`);
-      }
-
-      const data: FestivalEvent[] = await response.json();
-      events.value = data;
-      workingApiBase = base;
-      success = true;
-
-      if (!isInitialFitDone) {
-        renderMarkers(filteredEvents.value, true);
-        isInitialFitDone = true;
-      } else {
-        renderMarkers(filteredEvents.value, false);
-      }
-      break;
-    } catch (err: any) {
-      lastError = err;
-      console.warn(`[FestivalMap] Probe failed for '${base}/api/be_fa/events':`, err.message || err);
+    if (!isInitialFitDone) {
+      renderMarkers(filteredEvents.value, true);
+      isInitialFitDone = true;
+    } else {
+      renderMarkers(filteredEvents.value, false);
     }
+  } catch (err: any) {
+    console.error('[FestivalMap] Failed to load events:', err);
+    errorMessage.value = `Unable to load events: ${err.message || err}`;
+  } finally {
+    isLoading.value = false;
   }
-
-  if (!success) {
-    console.error('[FestivalMap] All backend API candidate URLs failed:', lastError);
-    const attempted = candidates.map(c => c || '(relative /)').join(', ');
-    errorMessage.value = `Unable to connect to events API (probed: ${attempted}). Ensure backend stack is running: ./restart.sh`;
-  }
-
-  isLoading.value = false;
 };
 
 const reloadEvents = () => {
-  workingApiBase = null;
-  fetchEvents();
+  fetchEvents(true);
 };
 
 const setPreset = (preset: 'all' | 'weekend' | '7days' | '30days') => {

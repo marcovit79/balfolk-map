@@ -6,7 +6,8 @@
     window.API_BASE_URL = '';
 
     window.cordova = {
-        platformId: 'android',
+        isMock: true,
+        platformId: 'browser-mock',
         version: '13.0.0',
         require: function(module) {
             console.log('[Cordova Emulation] cordova.require:', module);

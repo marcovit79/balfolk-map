@@ -2,6 +2,13 @@
 frontend/node_modules/
 frontend/dist/
 
+# Backend Microservices
+ms_festival_aggregator/node_modules/
+ms_festival_aggregator/dist/
+ms_preferences/node_modules/
+ms_preferences/dist/
+
+
 # Cordova App
 cordova_app/www/
 cordova_app/platforms/
